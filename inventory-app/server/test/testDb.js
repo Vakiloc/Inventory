@@ -2,10 +2,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { migrateInventorySchema } from '../src/db.js';
+import { migrateInventorySchema } from '../src/inventory/db.js';
 import { createApp } from '../src/app.js';
-import { createInventoryDbProvider } from '../src/inventoryDb.js';
-import { getOwnerToken, getServerSecret, openStateDb } from '../src/stateDb.js';
+import { createInventoryDbProvider } from '../src/inventory/inventoryDb.js';
+import { getOwnerToken, getServerSecret, openStateDb } from '../src/idp/stateDb.js';
+import { setStateDb } from '../src/idp/webauthnDb.js';
 
 export function createTestContext() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'inventory-server-test-'));
@@ -15,6 +16,9 @@ export function createTestContext() {
   const state = openStateDb();
   const ownerToken = getOwnerToken(state.db);
   const serverSecret = getServerSecret(state.db);
+
+  // Initialize WebAuthn DB so credentials are stored in the stateDb.
+  setStateDb(state.db);
 
   const inventoryDbProvider = createInventoryDbProvider({ migrateInventorySchema });
   const { db, dbPath } = inventoryDbProvider.getDbForInventory('default');
@@ -78,7 +82,7 @@ export function createTestContext() {
     ownerToken,
     dir,
     authHeader: { Authorization: `Bearer ${ownerToken}` },
-    startServer, 
+    startServer,
     baseUrl,
     cleanup
   };

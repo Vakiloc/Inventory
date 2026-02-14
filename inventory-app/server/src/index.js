@@ -1,13 +1,18 @@
-import { migrateInventorySchema } from './db.js';
+import { migrateInventorySchema } from './inventory/db.js';
 import { createApp } from './app.js';
-import { openStateDb, getOwnerToken, getServerSecret } from './stateDb.js';
-import { createInventoryDbProvider } from './inventoryDb.js';
+import { openStateDb, getOwnerToken, getServerSecret } from './idp/stateDb.js';
+import { createInventoryDbProvider } from './inventory/inventoryDb.js';
+import { setStateDb } from './idp/webauthnDb.js';
 import https from 'node:https';
 import fs from 'node:fs';
 
 const state = openStateDb();
 const ownerToken = getOwnerToken(state.db);
 const serverSecret = getServerSecret(state.db);
+
+// Initialize WebAuthn DB with the stateDb handle so credentials are
+// stored in server-state.sqlite (the IdP database).
+setStateDb(state.db);
 
 const inventoryDbProvider = createInventoryDbProvider({ migrateInventorySchema });
 
@@ -40,7 +45,7 @@ if (process.env.HTTPS_PFX_PATH) {
   try {
     const pfx = fs.readFileSync(process.env.HTTPS_PFX_PATH);
     const passphrase = process.env.HTTPS_PASSPHRASE || '';
-    
+
     server = https.createServer({ pfx, passphrase }, app).listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`inventory-server listening on https://0.0.0.0:${port}`);
@@ -162,12 +167,6 @@ async function shutdown(reason) {
 
   try {
     inventoryDbProvider.closeAll();
-  } catch {
-    // ignore
-  }
-
-  try {
-    legacyDb.db.close();
   } catch {
     // ignore
   }
