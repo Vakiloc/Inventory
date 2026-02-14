@@ -1,10 +1,13 @@
 # LAN Sync API (Desktop server)
 
 Base URL example:
-- `http://<desktop-ip>:5199`
+- `https://<desktop-ip>`
 
 Auth header:
 - `Authorization: Bearer <token>`
+
+Inventory selection header (optional):
+- `X-Inventory-Id: <inventory-id>` (defaults to active inventory)
 
 Auth rule:
 - `GET /api/ping` is unauthenticated.
@@ -15,6 +18,16 @@ Auth rule:
 - `GET /api/ping` (no auth)
 - `GET /api/admin/token` (localhost-only)
 - `GET /api/meta`
+
+### Pairing & Devices
+- `GET /api/admin/pair-code` (localhost-only) — generate pairing code
+- `GET /api/admin/pair-code/:code/status` (localhost-only) — poll pairing code status
+- `POST /api/pair/exchange` (no auth) — exchange pairing code for device token
+- `GET /api/devices` — list paired devices
+- `POST /api/devices/:id/revoke` — revoke device access
+
+### Inventories
+- `GET /api/inventories` — list available inventories (multi-inventory mode)
 
 ### Categories
 - `GET /api/categories`
@@ -137,3 +150,10 @@ Response:
 
 - `GET /api/item-barcodes?since=<ms>`
 	- returns `{ serverTimeMs, barcodes: [{ barcode, item_id, created_at }, ...] }`
+
+### WebAuthn (under `/auth/webauthn/`)
+- `POST /auth/webauthn/registration/options` (local network only) — begin registration
+- `POST /auth/webauthn/registration/verify` (local network only) — complete registration
+- `POST /auth/webauthn/registration/cancel` — cancel registration
+- `POST /auth/webauthn/authentication/options` — begin authentication
+- `POST /auth/webauthn/authentication/verify` — complete authentication

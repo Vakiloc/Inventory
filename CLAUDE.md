@@ -15,16 +15,25 @@ Inventory/
 │   ├── server/                  # Node.js Express API + SQLite
 │   │   ├── src/
 │   │   │   ├── index.js         # Entry point, HTTPS setup, graceful shutdown
-│   │   │   ├── app.js           # Express app creation, routes, middleware
-│   │   │   ├── db.js            # Database schema & migrations
-│   │   │   ├── stateDb.js       # Server-state DB (pairing, auth)
-│   │   │   ├── repo.js          # Data access layer (items, categories, locations, scans)
-│   │   │   ├── http.js          # Auth middleware, security headers
+│   │   │   ├── app.js           # Express app creation, module wiring, domain splitting
+│   │   │   ├── http.js          # Security headers, response helpers
 │   │   │   ├── validation.js    # Zod schemas for API payloads
-│   │   │   ├── routes/          # API endpoint handlers
-│   │   │   ├── middleware/      # IP-check middleware
+│   │   │   ├── idp/             # Identity Provider module
+│   │   │   │   ├── index.js     # Module entry: createIdp()
+│   │   │   │   ├── auth.js      # Auth middleware, role enforcement
+│   │   │   │   ├── stateDb.js   # Server-state DB (pairing, devices, WebAuthn creds)
+│   │   │   │   ├── webauthn.js  # WebAuthn registration/verification logic
+│   │   │   │   ├── webauthnDb.js # WebAuthn credential persistence
+│   │   │   │   ├── ipCheck.js   # Local network IP validation
+│   │   │   │   └── routes/      # IdP routes (core, devices, webauthn)
+│   │   │   ├── inventory/       # Inventory App module
+│   │   │   │   ├── index.js     # Module entry: createInventoryRouters()
+│   │   │   │   ├── db.js        # Inventory DB schema & migrations
+│   │   │   │   ├── inventoryDb.js # Multi-inventory DB provider
+│   │   │   │   ├── repo.js      # Data access layer (items, categories, locations, scans)
+│   │   │   │   ├── middleware.js # X-Inventory-Id header resolution
+│   │   │   │   └── routes/      # Inventory routes (items, categories, locations, scans, syncLog)
 │   │   │   ├── drive/           # Google Drive sync (optional scaffold)
-│   │   │   ├── webauthn/        # WebAuthn registration/verification
 │   │   │   └── i18n/            # Server-side translations
 │   │   └── test/                # Vitest + Supertest tests
 │   ├── desktop/                 # Electron desktop client
@@ -81,12 +90,12 @@ npm install
 ### Development
 
 ```sh
-npm run dev              # Server only (port 5199)
+npm run dev              # Server only (port 443)
 npm run dev:desktop      # Desktop app + embedded server
 npm run dev:all          # Concurrent server + desktop (uses concurrently)
 ```
 
-Override the default port with `PORT=5200` (server-only) or `INVENTORY_PORT=5200` (desktop).
+Override the default port with `PORT=8443` (server-only) or `INVENTORY_PORT=8443` (desktop).
 
 ### Testing
 
@@ -129,10 +138,23 @@ Two separate SQLite files (created automatically on first run):
 
 | Database | Path | Purpose |
 |----------|------|---------|
-| `inventory.sqlite` | `server/data/` | Items, categories, locations, barcodes, scan events, sync log, WebAuthn credentials |
-| `server-state.sqlite` | `server/data/` | Paired devices, pairing codes, server secret & owner token |
+| `inventory.sqlite` | Per-inventory data directory | Items, categories, locations, barcodes, scan events, sync log |
+| `server-state.sqlite` | Server state directory (Electron: `userData/`) | Paired devices, pairing codes, server secret, owner token, WebAuthn credentials |
 
-Migrations run automatically via `CREATE TABLE IF NOT EXISTS` in `db.js` and `stateDb.js` on server startup.
+Migrations run automatically via `CREATE TABLE IF NOT EXISTS` in `inventory/db.js` and `idp/stateDb.js` on server startup.
+
+### Server Module Architecture
+
+The server is split into two logical modules, both running in the same Express process:
+
+- **IdP (Identity Provider)** (`server/src/idp/`): Authentication, device pairing (QR code flow), device management (list/revoke), WebAuthn/passkey registration and verification. All state stored in `server-state.sqlite`.
+- **Inventory** (`server/src/inventory/`): Item/category/location CRUD, barcode scanning, sync/export/import, multi-inventory selection. Data stored in per-inventory `inventory.sqlite` files.
+
+The IdP creates auth middleware (`requireAuth`, `requireOwner`) consumed by the Inventory module. Both modules expose Express routers mounted on a shared `/api` router in `app.js`.
+
+**Split-domain mode** (optional): When `IDP_HOSTNAME` and/or `APP_HOSTNAME` env vars are set, the server routes WebAuthn requests (`/auth/webauthn/*`) to the IdP hostname and API requests (`/api/*`) to the app hostname. In monolith mode (default), both coexist on a single origin.
+
+**Multi-inventory**: The `X-Inventory-Id` request header selects which inventory database to use. A registry file (`inventories.json` in Electron `userData/`) maps inventory IDs to data directories. Each inventory has its own `inventory.sqlite`. If no registry is configured, a single default inventory is used.
 
 ### Sync & Conflict Resolution
 
@@ -142,10 +164,10 @@ Migrations run automatically via `CREATE TABLE IF NOT EXISTS` in `db.js` and `st
 
 ### Security
 
-- **TLS**: Self-signed certificates generated by a local Root CA (`keystore.js`) using `sslip.io` domains for valid HTTPS origins on LAN.
-- **Authentication**: Bearer token (`Authorization: Bearer <token>`). Owner token stored in `server-state.sqlite`; device tokens issued during pairing.
-- **WebAuthn/Passkeys**: Used for admin operations. Libraries: `@simplewebauthn/server` (backend), `navigator.credentials` (frontend).
-- **Pairing**: Desktop generates a short-lived pairing code (2-min TTL) displayed as a QR code. Android scans it and exchanges for a permanent device token (Trust-On-First-Use for the self-signed certificate).
+- **TLS**: Self-signed certificates generated by a local Root CA (`keystore.js`) using `sslip.io` domains, or user-provided certificates (e.g., Let's Encrypt via DuckDNS). Default port is 443 (HTTPS standard).
+- **Authentication**: Bearer token (`Authorization: Bearer <token>`). Owner token stored in `server-state.sqlite`; device tokens (`d1.<device_id>.<hmac>`) issued during pairing. Roles: owner, editor, viewer.
+- **WebAuthn/Passkeys**: Used for device registration and admin authentication. Libraries: `@simplewebauthn/server` (backend), `navigator.credentials` (frontend), Android Credentials API.
+- **Pairing**: Desktop generates a short-lived pairing code (2-min TTL) displayed as a QR code. QR payload includes LAN IPs for offline hostname resolution. Android scans it and exchanges for a permanent device token (Trust-On-First-Use for the self-signed certificate).
 - **mDNS discovery**: `bonjour-service` advertises the server on the LAN for automatic Android discovery.
 
 ### Frontend
@@ -172,7 +194,7 @@ The desktop renderer uses **vanilla JavaScript** with ES modules bundled by Vite
 - **No linter/formatter enforced**: There is no ESLint or Prettier configuration. Follow existing code style when making changes.
 - **Validation**: API payloads are validated with Zod schemas in `server/src/validation.js`.
 - **i18n**: Translation strings live in `i18n/` directories within both server and desktop. Run `npm run lint:i18n` to check key consistency.
-- **Database changes**: Add new tables or columns via `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE` in `db.js` or `stateDb.js`. Migrations are embedded in code, not separate files.
+- **Database changes**: Add new tables or columns via `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE` in `inventory/db.js` (inventory schema) or `idp/stateDb.js` (identity/state schema). Migrations are embedded in code, not separate files.
 - **Vanilla JS frontend**: No JSX, no templating engine. UI updates are done via direct DOM manipulation (`document.getElementById`, `innerHTML`, event listeners).
 - **Android**: Kotlin with Jetpack Compose for UI, Room for local persistence, Retrofit for HTTP.
 
@@ -180,9 +202,14 @@ The desktop renderer uses **vanilla JavaScript** with ES modules bundled by Vite
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `5199` | Server listen port (server-only mode) |
-| `INVENTORY_PORT` | `5199` | Server port override (desktop mode) |
-| `INVENTORY_DATA_DIR` | `server/data/` | SQLite database directory |
+| `PORT` | `443` | Server listen port (server-only mode) |
+| `INVENTORY_PORT` | `443` | Server port override (desktop mode) |
+| `INVENTORY_DATA_DIR` | `server/data/` | SQLite database directory (default inventory) |
+| `INVENTORY_SERVER_STATE_DIR` | `INVENTORY_DATA_DIR` | Directory for `server-state.sqlite` (Electron: `userData/`) |
+| `INVENTORY_REGISTRY_PATH` | — | Path to `inventories.json` for multi-inventory mode |
+| `IDP_HOSTNAME` | — | Hostname for IdP routes (split-domain mode) |
+| `APP_HOSTNAME` | — | Hostname for Inventory API routes (split-domain mode) |
+| `WEBAUTHN_RP_ID` | `req.hostname` | WebAuthn Relying Party ID (domain for passkey binding) |
 | `HTTPS_PFX_PATH` | — | Path to PKCS#12 certificate file |
 | `HTTPS_CERT_PATH` / `HTTPS_KEY_PATH` | — | Separate cert/key paths |
 | `HTTPS_PASSPHRASE` | — | TLS certificate passphrase |
