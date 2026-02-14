@@ -1,0 +1,19 @@
+{
+  "errors.unknown": "Algo salió mal.",
+  "errors.unauthorized": "No autorizado.",
+  "errors.forbidden": "Prohibido.",
+  "errors.invalid_id": "Id no válido.",
+  "errors.not_found": "No encontrado.",
+  "errors.inventory_not_found": "Inventario no encontrado.",
+  "errors.internal_error": "Error interno del servidor.",
+  "errors.validation_failed": "La validación falló.",
+
+  "errors.invalid_code": "Código no válido.",
+  "errors.already_used": "Código ya usado.",
+  "errors.expired": "Código caducado.",
+  "errors.device_mismatch": "El dispositivo no coincide.",
+  "errors.revoked": "Dispositivo revocado.",
+
+  "errors.conflict": "Conflicto.",
+  "errors.barcode_in_use": "El código de barras ya está en uso."
+}

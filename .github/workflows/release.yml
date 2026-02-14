@@ -1,0 +1,208 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Release
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v0.1.1)'
+        required: true
+        default: 'v0.1.3'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  validate_node:
+    name: Validate (Node/Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: inventory-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: inventory-app/package-lock.json
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build -w desktop
+
+  validate_android:
+    name: Validate (Android/Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        working-directory: inventory-app/android
+        run: ./gradlew :app:testDebugUnitTest
+
+  build_desktop_win:
+    name: Build desktop (Windows installer)
+    needs: [validate_node]
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: inventory-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: inventory-app/package-lock.json
+
+      - run: npm ci
+
+      - name: Ensure 7zip binary exists
+        shell: pwsh
+        run: |
+          $p = "node_modules/7zip-bin/win/x64/7za.exe"
+          if (-not (Test-Path $p)) {
+            Write-Host "7za.exe missing at $p. Attempting to add Defender exclusion and reinstall 7zip-bin..."
+            try {
+              Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE" | Out-Null
+              Write-Host "Added Defender exclusion for $env:GITHUB_WORKSPACE"
+            } catch {
+              Write-Host "Add-MpPreference failed (continuing): $($_.Exception.Message)"
+            }
+
+            npm i --no-save 7zip-bin@5.2.0
+          }
+
+          if (-not (Test-Path $p)) {
+            Write-Error "7za.exe still missing at $p"
+            Get-ChildItem "node_modules/7zip-bin/win" -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+            exit 1
+          }
+
+      - name: Set RELEASE_VERSION from tag
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          "RELEASE_VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Package
+        working-directory: inventory-app/desktop
+        run: npm run dist:win
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-win
+          # Only publish the installer exe as a downloadable asset.
+          path: inventory-app/desktop/dist-electron/*.exe
+
+  build_android_apk:
+    name: Build Android (release APK)
+    needs: [validate_android]
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Set version from tag
+        shell: bash
+        run: |
+          VERSION_NAME="${GITHUB_REF_NAME#v}"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Decode keystore (optional)
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        shell: bash
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > inventory-app/android/release.jks
+          echo "ANDROID_KEYSTORE_PATH=$GITHUB_WORKSPACE/inventory-app/android/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: inventory-app/android
+        env:
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+          VERSION_CODE: ${{ env.VERSION_CODE }}
+          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew :app:copyReleaseApk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: inventory-app/android/app/artifacts/app-release.apk
+
+  publish:
+    name: Publish GitHub Release
+    needs: [build_desktop_win, build_android_apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-win
+          path: release-assets/desktop
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: release-assets/android
+
+      - name: Recreate release (wipe old assets)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            const tag = context.eventName === 'workflow_dispatch'
+              ? core.getInput('tag', { required: true })
+              : context.ref.replace('refs/tags/', '')
+
+            core.info(`Ensuring release for tag: ${tag}`)
+
+            // The only reliable way to guarantee we don't accumulate hundreds of assets over multiple
+            // reruns is to delete the existing release, which removes all its assets in one operation.
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({ owner, repo, tag })
+              await github.rest.repos.deleteRelease({ owner, repo, release_id: existing.data.id })
+              core.info(`Deleted existing release id=${existing.data.id} for ${tag}`)
+            } catch (e) {
+              core.info(`No existing release to delete for ${tag} (continuing): ${e.status || e.message}`)
+            }
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: true
+          overwrite_files: false
+          files: |
+            release-assets/desktop/*.exe
+            release-assets/android/app-release.apk

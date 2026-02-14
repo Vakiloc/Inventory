@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup - Household Inventory</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f0f2f5; font-family: sans-serif; }
+    .setup-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+    
+    h1 { margin-top: 0; text-align: center; color: #333; margin-bottom: 25px; }
+
+    .mode-switch { display: flex; background: #e9ecef; border-radius: 6px; padding: 4px; margin-bottom: 25px; }
+    .mode-option { flex: 1; text-align: center; padding: 8px; cursor: pointer; border-radius: 4px; font-weight: 500; font-size: 0.9rem; color: #555; transition: all 0.2s; }
+    .mode-option.active { background: white; color: #007bff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-weight: 600; }
+
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.85rem; color: #444; }
+    .input-field, .file-input-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 0.95rem; }
+    .file-input-group { display: flex; gap: 8px; }
+    .domain-suffix { display: flex; align-items: center; gap: 5px; }
+    .domain-suffix span { color: #888; font-size: 0.9rem; background: #f8f9fa; padding: 9px; border: 1px solid #ddd; border-left: none; border-radius: 0 4px 4px 0; }
+    .domain-suffix input { border-radius: 4px 0 0 4px; }
+
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 1rem; margin-top: 10px; }
+    .btn.primary { background-color: #007bff; color: white; }
+    .btn.primary:disabled { background-color: #b8daff; cursor: wait; }
+    .btn.secondary { background-color: #f8f9fa; color: #333; border: 1px solid #ddd; margin-top: 10px; font-weight: normal; font-size: 0.9rem; }
+    
+    .info-box { background-color: #e3f2fd; color: #0d47a1; padding: 12px; border-radius: 4px; font-size: 0.85em; line-height: 1.4; margin-bottom: 20px; }
+    .hidden { display: none; }
+
+    #statusArea { margin-top: 20px; padding: 12px; border-radius: 4px; font-size: 0.85em; background: #222; color: #0f0; font-family: monospace; display: none; white-space: pre-wrap; max-height: 150px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="setup-container">
+    <h1>Create Secure Connection</h1>
+    
+    <!-- MODE SWITCH -->
+    <div class="mode-switch">
+        <div class="mode-option active" data-mode="auto">Automatic (DuckDNS)</div>
+        <div class="mode-option" data-mode="manual">Manual (Custom)</div>
+    </div>
+
+    <div class="info-box" id="infoAuto">
+        <strong>Recommended:</strong> Generates a free trusted HTTPS certificate so Passkeys work on all devices.
+        <br>Requires <a href="https://www.duckdns.org" target="_blank">DuckDNS Account</a> & Python.
+    </div>
+    
+    <div class="info-box hidden" id="infoManual">
+        Provide your own certificate files (.pem). Use this if you have your own domain or use a reverse proxy.
+    </div>
+
+    <form id="setupForm">
+        
+        <!-- AUTO FIELDS -->
+        <div id="section-auto">
+            <div class="form-group">
+                <label>DuckDNS Subdomains</label>
+                <div class="domain-suffix">
+                    <input type="text" id="autoSubdomains" placeholder="my-app, my-idp (optional)" class="input-field" style="flex:1;">
+                    <span>.duckdns.org</span>
+                </div>
+                 <small style="color: #666; font-size: 0.75rem;">Enter one or two subdomains (comma separated).<br>Second value is used for IDP if provided.</small>
+            </div>
+
+            <div class="form-group">
+                <label>DuckDNS Token</label>
+                <input type="password" id="autoToken" placeholder="e.g. a7c4d0..." class="input-field">
+            </div>
+
+            <div class="form-group">
+                <label>Email (for Let's Encrypt)</label>
+                <input type="email" id="autoEmail" placeholder="your@email.com" class="input-field">
+            </div>
+        </div>
+
+        <!-- MANUAL FIELDS -->
+        <div id="section-manual" class="hidden">
+            <div class="form-group">
+                <label>Hostname</label>
+                <input type="text" id="manHostname" placeholder="inventory.local" class="input-field">
+            </div>
+            
+            <div class="form-group">
+                <label>IDP Hostname (Optional)</label>
+                <input type="text" id="manIdpHostname" placeholder="idp.inventory.local" class="input-field">
+            </div>
+
+            <div class="form-group">
+                <label>Private Key (.pem)</label>
+                <div class="file-input-group">
+                    <input type="text" id="manKey" placeholder="Path to privkey.pem" class="input-field">
+                    <button type="button" id="browseKey" class="btn secondary" style="margin:0; width:auto;">...</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Certificate (.pem)</label>
+                <div class="file-input-group">
+                    <input type="text" id="manCert" placeholder="Path to fullchain.pem" class="input-field">
+                    <button type="button" id="browseCert" class="btn secondary" style="margin:0; width:auto;">...</button>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" id="btnAction" class="btn primary">Generate & Start Server</button>
+
+        <div id="statusArea"></div>
+
+        <button type="button" id="btnSelfSigned" class="btn secondary" style="margin-top: 20px;">Or use Self-Signed (Not Rec.)</button>
+    </form>
+  </div>
+  <script type="module" src="setup.js"></script>
+</body>
+</html>

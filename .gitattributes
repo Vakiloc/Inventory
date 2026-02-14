@@ -1,0 +1,5 @@
+# Ensure scripts used on Linux runners keep LF endings
+inventory-app/android/gradlew text eol=lf
+
+# Common shell scripts
+*.sh text eol=lf

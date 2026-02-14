@@ -1,0 +1,19 @@
+{
+  "errors.unknown": "Something went wrong.",
+  "errors.unauthorized": "Unauthorized.",
+  "errors.forbidden": "Forbidden.",
+  "errors.invalid_id": "Invalid id.",
+  "errors.not_found": "Not found.",
+  "errors.inventory_not_found": "Inventory not found.",
+  "errors.internal_error": "Internal server error.",
+  "errors.validation_failed": "Validation failed.",
+
+  "errors.invalid_code": "Invalid code.",
+  "errors.already_used": "Code already used.",
+  "errors.expired": "Code expired.",
+  "errors.device_mismatch": "Device mismatch.",
+  "errors.revoked": "Device revoked.",
+
+  "errors.conflict": "Conflict.",
+  "errors.barcode_in_use": "Barcode already in use."
+}

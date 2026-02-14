@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "exported_at_ms": 0,
+  "categories": [
+    { "category_id": 1, "name": "Kitchen" },
+    { "category_id": 2, "name": "Electronics" },
+    { "category_id": 3, "name": "Tools" }
+  ],
+  "locations": [
+    { "location_id": 1, "name": "Home", "parent_id": null },
+    { "location_id": 2, "name": "Garage", "parent_id": null },
+    { "location_id": 3, "name": "Kitchen Drawer", "parent_id": 1 }
+  ],
+  "items": [
+    {
+      "item_id": 1001,
+      "name": "Sample - LED Flashlight",
+      "description": "Handheld flashlight for emergencies",
+      "quantity": 2,
+      "barcode": "SAMPLE-FLASHLIGHT-001",
+      "category_id": 3,
+      "location_id": 2,
+      "purchase_date": "2023-01-01",
+      "warranty_info": null,
+      "value": 15,
+      "serial_number": null,
+      "photo_path": null,
+      "deleted": 0,
+      "last_modified": 1
+    },
+    {
+      "item_id": 1002,
+      "name": "Sample - Measuring Tape",
+      "description": "5m tape measure",
+      "quantity": 1,
+      "barcode": "SAMPLE-TAPE-001",
+      "category_id": 3,
+      "location_id": 2,
+      "purchase_date": "2023-01-01",
+      "warranty_info": null,
+      "value": 8,
+      "serial_number": null,
+      "photo_path": null,
+      "deleted": 0,
+      "last_modified": 1
+    },
+    {
+      "item_id": 1003,
+      "name": "Sample - USB-C Charger",
+      "description": "65W USB-C PD wall charger",
+      "quantity": 1,
+      "barcode": "SAMPLE-CHARGER-001",
+      "category_id": 2,
+      "location_id": 1,
+      "purchase_date": "2023-01-01",
+      "warranty_info": null,
+      "value": 35,
+      "serial_number": "SN-DEMO-0001",
+      "photo_path": null,
+      "deleted": 0,
+      "last_modified": 1
+    },
+    {
+      "item_id": 1004,
+      "name": "Sample - Wooden Spoon Set",
+      "description": "Set of 3 wooden cooking spoons",
+      "quantity": 1,
+      "barcode": "SAMPLE-SPOON-001",
+      "category_id": 1,
+      "location_id": 3,
+      "purchase_date": "2023-01-01",
+      "warranty_info": null,
+      "value": 12,
+      "serial_number": null,
+      "photo_path": null,
+      "deleted": 0,
+      "last_modified": 1
+    }
+  ],
+  "item_barcodes": [
+    { "barcode": "SAMPLE-FLASHLIGHT-ALT", "item_id": 1001, "created_at": 1 },
+    { "barcode": "SAMPLE-CHARGER-ALT", "item_id": 1003, "created_at": 1 }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "app.title": "Inventario del hogar",
+
+  "topbar.search.placeholder": "Buscar nombre / código de barras / serie",
+  "topbar.locale.en": "Inglés",
+  "topbar.locale.es": "Español",
+  "topbar.sync": "Sincronizar",
+  "topbar.share": "Compartir",
+  "topbar.scanAccessCode": "Escanear código de acceso",
+  "topbar.addItem": "Añadir artículo",
+
+  "sidebar.inventory.title": "Inventario",
+  "sidebar.inventory.new.placeholder": "Nuevo inventario",
+  "sidebar.inventory.create": "Crear",
+  "sidebar.inventory.hint": "Cada inventario usa un archivo de base de datos local independiente.",
+
+  "sidebar.role.title": "Rol",
+  "sidebar.role.owner": "Propietario/Administrador",
+  "sidebar.role.editor": "Colaborador (Editor)",
+  "sidebar.role.viewer": "Visor (solo lectura)",
+  "sidebar.role.hint": "El modo visor desactiva la edición.",
+
+  "sidebar.category.title": "Categoría",
+  "sidebar.category.new.placeholder": "Nueva categoría",
+  "sidebar.category.add": "Añadir",
+  "sidebar.category.rename": "Renombrar",
+  "sidebar.category.delete": "Eliminar",
+
+  "sidebar.location.title": "Ubicación",
+  "sidebar.location.new.placeholder": "Nueva ubicación",
+  "sidebar.location.add": "Añadir",
+  "sidebar.location.rename": "Renombrar",
+  "sidebar.location.delete": "Eliminar",
+
+  "sidebar.scan.title": "Escaneo rápido",
+  "sidebar.scan.placeholder": "Haga clic aquí y escanee",
+  "sidebar.scan.hint": "Los escáneres USB suelen escribir y pulsar Enter.",
+  "sidebar.scan.override": "Anular escaneo (elegir artículo o crear uno nuevo)",
+  "sidebar.scan.webcam": "Escaneo con webcam",
+
+  "sidebar.status.title": "Estado",
+  "sidebar.status.starting": "Iniciando…",
+
+  "table.name": "Nombre",
+  "table.qty": "Cant.",
+  "table.category": "Categoría",
+  "table.location": "Ubicación",
+  "table.barcode": "Código de barras",
+  "table.updated": "Actualizado",
+
+  "dialog.item.title": "Artículo",
+  "item.field.name": "Nombre",
+  "item.field.description": "Descripción",
+  "item.field.quantity": "Cantidad",
+  "item.field.value": "Valor",
+  "item.field.category": "Categoría",
+  "item.field.location": "Ubicación",
+  "item.field.barcode": "Código de barras",
+  "item.field.barcode.scan": "Escanear",
+  "item.field.barcode.corrupted": "Código de barras dañado/ilegible",
+  "item.altBarcodes.title": "También coincide con estos códigos de barras",
+  "item.altBarcodes.add.placeholder": "Añadir otro código de barras",
+  "item.altBarcodes.add": "Añadir",
+  "item.altBarcodes.hint": "Use esto para combinar varios códigos de barras en un solo artículo.",
+  "item.field.serialNumber": "Número de serie",
+  "item.field.purchaseDate": "Fecha de compra",
+  "item.field.purchaseDate.placeholder": "AAAA-MM-DD",
+  "item.field.warranty": "Información de garantía",
+  "item.field.photo": "Ruta de la foto (ruta de archivo del escritorio)",
+  "item.actions.delete": "Eliminar",
+  "item.actions.cancel": "Cancelar",
+  "item.actions.save": "Guardar",
+
+  "dialog.pair.title": "Compartir Inventario (LAN)",
+  "dialog.pair.hint": "Escanee este QR en el móvil para acceder. El QR caduca al cabo de un breve periodo.",
+  "dialog.pair.qr.alt": "QR de acceso",
+  "dialog.pair.baseUrl": "URL base",
+  "dialog.pair.expires": "Caduca",
+  "dialog.pair.payload": "JSON de acceso (copiar/pegar)",
+  "dialog.pair.copy": "Copiar JSON de acceso",
+  "dialog.pair.close": "Cerrar",
+
+  "dialog.webcamScan.title": "Escaneo con webcam",
+  "dialog.webcamScan.hint": "Apunte la cámara a un código de barras (UPC/EAN/Code128). Se detectará automáticamente.",
+  "dialog.webcamScan.cancel": "Cancelar",
+
+  "dialog.chooseItem.title": "Elegir artículo",
+  "dialog.chooseItem.items": "Artículos",
+  "dialog.chooseItem.cancel": "Cancelar",
+  "dialog.chooseItem.create": "Crear artículo nuevo",
+  "dialog.chooseItem.useSelected": "Usar seleccionado",
+
+  "dialog.scanOverride.title": "Anular escaneo",
+  "dialog.scanOverride.hint": "Código de barras: {barcode}. Elija un artículo para incrementar o cree uno nuevo.",
+  "dialog.multipleMatches.title": "Múltiples coincidencias",
+  "dialog.multipleMatches.hint": "Código de barras: {barcode}. Elija qué artículo incrementar.",
+
+  "items.unnamed": "(Artículo sin nombre)",
+  "items.optionFormat": "{name} (cant.: {qty}, id: {id})",
+
+  "common.edit": "Editar",
+  "common.delete": "Eliminar",
+
+  "filters.category.all": "Todas las categorías",
+  "filters.location.all": "Todas las ubicaciones",
+
+  "items.empty.noItemsYetCanEdit": "Aún no hay artículos. Añada uno o escanee un código de barras.",
+  "items.empty.noItemsYetReadOnly": "Aún no hay artículos.",
+  "items.empty.noMatch": "No hay artículos que coincidan. Limpie la búsqueda o los filtros para ver más.",
+  "items.empty.noItemsToDisplay": "No hay artículos para mostrar.",
+
+  "confirm.discardUnsavedChanges": "¿Descartar los cambios sin guardar?",
+  "confirm.deleteItem": "¿Eliminar \"{name}\"?",
+  "confirm.deleteCategory": "¿Eliminar la categoría \"{name}\"? Los artículos quedarán sin categoría.",
+  "confirm.deleteLocation": "¿Eliminar la ubicación \"{name}\"? Los artículos quedarán sin asignar.",
+
+  "prompt.renameCategory": "Renombrar categoría",
+  "prompt.renameLocation": "Renombrar ubicación",
+
+  "status.canceled": "Cancelado",
+  "status.quantityUpdated": "Cantidad actualizada: {name}",
+  "status.quantityError": "Error de cantidad: {error}",
+  "status.deleted": "Eliminado: {name}",
+  "status.deleteError": "Error al eliminar: {error}",
+  "status.loadedItems": "Cargados {count} artículos{suffixPart}",
+  "status.categoryRenamed": "Categoría renombrada",
+  "status.categoryDeleted": "Categoría eliminada",
+  "status.locationRenamed": "Ubicación renombrada",
+  "status.locationDeleted": "Ubicación eliminada",
+
+  "dialog.item.editTitle": "Editar artículo #{id}",
+  "dialog.item.addTitle": "Añadir artículo",
+
+  "item.altBarcodes.none": "(ninguno)",
+  "item.altBarcodes.errorLoading": "(error al cargar)",
+
+  "dialog.pair.expiredAt": "Caducado ({at})",
+  "dialog.pair.inSecondsAt": "En {sec}s ({at})",
+  "dialog.pair.paired": "Emparejado",
+
+  "errors.pairCodeGenerationFailed": "No se pudo generar el código de emparejamiento",
+
+  "status.readOnly": "Modo solo lectura",
+  "status.scanCancelled": "Escaneo cancelado",
+  "status.scanned": "Escaneado: {name}",
+  "status.incrementedQuantity": "Cantidad incrementada para: {name}",
+  "status.scanResultUnexpected": "Resultado de escaneo: respuesta inesperada",
+  "status.barcodeNotFound": "Código de barras no encontrado",
+  "status.scanError": "Error de escaneo: {error}",
+
+  "errors.validation_failed": "La validación falló",
+  "errors.unknown": "Algo salió mal."
+}

@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  node:
+    name: Node tests (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: inventory-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: inventory-app/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Desktop build (renderer)
+        run: npm run build -w desktop
+
+  android:
+    name: Android unit tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        working-directory: inventory-app/android
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Assemble debug
+        working-directory: inventory-app/android
+        run: ./gradlew :app:assembleDebug

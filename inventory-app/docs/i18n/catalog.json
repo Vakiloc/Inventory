@@ -1,0 +1,1075 @@
+{
+  "schema": 1,
+  "defaultLocale": "en",
+  "notes": [
+    "Canonical shared message key catalog for Desktop + Android + Server.",
+    "Code must reference message keys (not hard-coded user-facing strings).",
+    "If a locale or key is missing at runtime, fall back to English (en).",
+    "Platform bundle formats may differ, but keys must remain consistent across platforms."
+  ],
+  "keys": {
+    "app.title": {
+      "defaultMessage": "Household Inventory",
+      "description": "Application title"
+    },
+
+    "topbar.search.placeholder": {
+      "defaultMessage": "Search name / barcode / serial",
+      "description": "Top bar search placeholder"
+    },
+    "topbar.sync": {
+      "defaultMessage": "Sync",
+      "description": "Top bar sync button"
+    },
+    "topbar.pair": {
+      "defaultMessage": "Pair",
+      "description": "Top bar pair button"
+    },
+    "topbar.addItem": {
+      "defaultMessage": "Add Item",
+      "description": "Top bar add item button"
+    },
+
+    "sidebar.inventory.title": {
+      "defaultMessage": "Inventory",
+      "description": "Sidebar inventory section title"
+    },
+    "sidebar.inventory.new.placeholder": {
+      "defaultMessage": "New inventory",
+      "description": "New inventory input placeholder"
+    },
+    "sidebar.inventory.create": {
+      "defaultMessage": "Create",
+      "description": "Create inventory button"
+    },
+    "sidebar.inventory.hint": {
+      "defaultMessage": "Each inventory uses a separate local database file.",
+      "description": "Inventory hint text"
+    },
+
+    "sidebar.role.title": {
+      "defaultMessage": "Role",
+      "description": "Sidebar role section title"
+    },
+    "sidebar.role.owner": {
+      "defaultMessage": "Owner/Admin",
+      "description": "Role option label"
+    },
+    "sidebar.role.editor": {
+      "defaultMessage": "Collaborator (Editor)",
+      "description": "Role option label"
+    },
+    "sidebar.role.viewer": {
+      "defaultMessage": "Viewer (Read-only)",
+      "description": "Role option label"
+    },
+    "sidebar.role.hint": {
+      "defaultMessage": "Viewer mode disables editing.",
+      "description": "Viewer mode hint"
+    },
+
+    "sidebar.category.title": {
+      "defaultMessage": "Category",
+      "description": "Sidebar category section title"
+    },
+    "sidebar.category.new.placeholder": {
+      "defaultMessage": "New category",
+      "description": "New category placeholder"
+    },
+    "sidebar.category.add": {
+      "defaultMessage": "Add",
+      "description": "Add category button"
+    },
+    "sidebar.category.rename": {
+      "defaultMessage": "Rename",
+      "description": "Rename category button"
+    },
+    "sidebar.category.delete": {
+      "defaultMessage": "Delete",
+      "description": "Delete category button"
+    },
+
+    "sidebar.location.title": {
+      "defaultMessage": "Location",
+      "description": "Sidebar location section title"
+    },
+    "sidebar.location.new.placeholder": {
+      "defaultMessage": "New location",
+      "description": "New location placeholder"
+    },
+    "sidebar.location.add": {
+      "defaultMessage": "Add",
+      "description": "Add location button"
+    },
+    "sidebar.location.rename": {
+      "defaultMessage": "Rename",
+      "description": "Rename location button"
+    },
+    "sidebar.location.delete": {
+      "defaultMessage": "Delete",
+      "description": "Delete location button"
+    },
+
+    "sidebar.scan.title": {
+      "defaultMessage": "Quick scan",
+      "description": "Sidebar quick scan section title"
+    },
+    "sidebar.scan.placeholder": {
+      "defaultMessage": "Click here and scan",
+      "description": "Quick scan input placeholder"
+    },
+    "sidebar.scan.hint": {
+      "defaultMessage": "USB scanners usually type + Enter.",
+      "description": "Quick scan hint"
+    },
+    "sidebar.scan.override": {
+      "defaultMessage": "Override scan (choose item or create new)",
+      "description": "Override scan checkbox label"
+    },
+    "sidebar.scan.webcam": {
+      "defaultMessage": "Webcam scan",
+      "description": "Sidebar webcam scan button"
+    },
+
+    "sidebar.status.title": {
+      "defaultMessage": "Status",
+      "description": "Sidebar status title"
+    },
+    "sidebar.status.starting": {
+      "defaultMessage": "Starting…",
+      "description": "Initial status text"
+    },
+
+    "table.name": {
+      "defaultMessage": "Name",
+      "description": "Items table column header"
+    },
+    "table.qty": {
+      "defaultMessage": "Qty",
+      "description": "Items table column header"
+    },
+    "table.category": {
+      "defaultMessage": "Category",
+      "description": "Items table column header"
+    },
+    "table.location": {
+      "defaultMessage": "Location",
+      "description": "Items table column header"
+    },
+    "table.barcode": {
+      "defaultMessage": "Barcode",
+      "description": "Items table column header"
+    },
+    "table.updated": {
+      "defaultMessage": "Updated",
+      "description": "Items table column header"
+    },
+
+    "dialog.item.title": {
+      "defaultMessage": "Item",
+      "description": "Item dialog title"
+    },
+    "item.field.value": {
+      "defaultMessage": "Value",
+      "description": "Item value field label"
+    },
+    "item.field.barcode.scan": {
+      "defaultMessage": "Scan",
+      "description": "Scan barcode button"
+    },
+    "item.field.barcode.corrupted": {
+      "defaultMessage": "Corrupted / unreadable barcode",
+      "description": "Corrupted barcode checkbox label"
+    },
+    "item.altBarcodes.title": {
+      "defaultMessage": "Also matches these barcodes",
+      "description": "Alternate barcodes section title"
+    },
+    "item.altBarcodes.add.placeholder": {
+      "defaultMessage": "Add another barcode",
+      "description": "Alternate barcode input placeholder"
+    },
+    "item.altBarcodes.add": {
+      "defaultMessage": "Add",
+      "description": "Alternate barcode add button"
+    },
+    "item.altBarcodes.hint": {
+      "defaultMessage": "Use this to combine multiple barcodes into one item.",
+      "description": "Alternate barcodes hint"
+    },
+    "item.field.purchaseDate": {
+      "defaultMessage": "Purchase date",
+      "description": "Purchase date field label"
+    },
+    "item.field.purchaseDate.placeholder": {
+      "defaultMessage": "YYYY-MM-DD",
+      "description": "Purchase date placeholder"
+    },
+    "item.field.warranty": {
+      "defaultMessage": "Warranty info",
+      "description": "Warranty field label"
+    },
+    "item.field.photo": {
+      "defaultMessage": "Photo path (desktop file path)",
+      "description": "Photo path field label"
+    },
+    "item.actions.delete": {
+      "defaultMessage": "Delete",
+      "description": "Item dialog delete button"
+    },
+    "item.actions.cancel": {
+      "defaultMessage": "Cancel",
+      "description": "Item dialog cancel button"
+    },
+    "item.actions.save": {
+      "defaultMessage": "Save",
+      "description": "Item dialog save button"
+    },
+
+    "dialog.pair.title": {
+      "defaultMessage": "LAN pairing",
+      "description": "Pairing dialog title"
+    },
+    "dialog.pair.hint": {
+      "defaultMessage": "Scan this QR on mobile to pair. The QR expires after a short period.",
+      "description": "Pairing dialog hint"
+    },
+    "dialog.pair.qr.alt": {
+      "defaultMessage": "Pairing QR",
+      "description": "Pairing QR image alt text"
+    },
+    "dialog.pair.baseUrl": {
+      "defaultMessage": "Base URL",
+      "description": "Pairing dialog base URL label"
+    },
+    "dialog.pair.expires": {
+      "defaultMessage": "Expires",
+      "description": "Pairing dialog expires label"
+    },
+    "dialog.pair.payload": {
+      "defaultMessage": "Pairing JSON (copy/paste)",
+      "description": "Pairing dialog payload label"
+    },
+    "dialog.pair.copy": {
+      "defaultMessage": "Copy pairing JSON",
+      "description": "Pairing dialog copy button"
+    },
+    "dialog.pair.close": {
+      "defaultMessage": "Close",
+      "description": "Pairing dialog close button"
+    },
+
+    "dialog.webcamScan.title": {
+      "defaultMessage": "Webcam scan",
+      "description": "Webcam scan dialog title"
+    },
+    "dialog.webcamScan.hint": {
+      "defaultMessage": "Point the camera at a barcode (UPC/EAN/Code128). It will auto-detect.",
+      "description": "Webcam scan dialog hint"
+    },
+    "dialog.webcamScan.cancel": {
+      "defaultMessage": "Cancel",
+      "description": "Webcam scan dialog cancel button"
+    },
+
+    "dialog.chooseItem.title": {
+      "defaultMessage": "Choose item",
+      "description": "Choose item dialog title"
+    },
+    "dialog.chooseItem.items": {
+      "defaultMessage": "Items",
+      "description": "Choose item dialog items label"
+    },
+    "dialog.chooseItem.cancel": {
+      "defaultMessage": "Cancel",
+      "description": "Choose item dialog cancel button"
+    },
+    "dialog.chooseItem.create": {
+      "defaultMessage": "Create new item",
+      "description": "Choose item dialog create button"
+    },
+    "dialog.chooseItem.useSelected": {
+      "defaultMessage": "Use selected",
+      "description": "Choose item dialog use selected button"
+    },
+
+    "dialog.scanOverride.title": {
+      "defaultMessage": "Override scan",
+      "description": "Override scan dialog title"
+    },
+    "dialog.scanOverride.hint": {
+      "defaultMessage": "Barcode: {barcode}. Choose any item to increment, or create a new item.",
+      "description": "Override scan dialog hint"
+    },
+    "dialog.multipleMatches.title": {
+      "defaultMessage": "Multiple matches",
+      "description": "Multiple matches dialog title"
+    },
+    "dialog.multipleMatches.hint": {
+      "defaultMessage": "Barcode: {barcode}. Choose which item to increment.",
+      "description": "Multiple matches dialog hint"
+    },
+
+    "items.unnamed": {
+      "defaultMessage": "(Unnamed item)",
+      "description": "Fallback name for unnamed items"
+    },
+    "items.optionFormat": {
+      "defaultMessage": "{name} (qty: {qty}, id: {id})",
+      "description": "Choose-item option display format"
+    },
+
+    "status.readOnly": {
+      "defaultMessage": "Read-only mode",
+      "description": "Status text shown when editing is disabled"
+    },
+    "status.scanCancelled": {
+      "defaultMessage": "Scan cancelled",
+      "description": "Status text when scan is cancelled"
+    },
+    "status.scanned": {
+      "defaultMessage": "Scanned: {name}",
+      "description": "Status text for successful scan"
+    },
+    "status.incrementedQuantity": {
+      "defaultMessage": "Incremented quantity for: {name}",
+      "description": "Status text for quantity increment"
+    },
+    "status.scanResultUnexpected": {
+      "defaultMessage": "Scan result: unexpected response",
+      "description": "Status text for unexpected scan response"
+    },
+    "status.barcodeNotFound": {
+      "defaultMessage": "Barcode not found",
+      "description": "Status text for unknown barcode in read-only mode"
+    },
+    "status.scanError": {
+      "defaultMessage": "Scan error: {error}",
+      "description": "Status text for scan error"
+    },
+
+    "errors.validation_failed": {
+      "defaultMessage": "Validation failed.",
+      "description": "Validation failed error message"
+    },
+    "errors.unauthorized": {
+      "defaultMessage": "Unauthorized.",
+      "description": "Unauthorized error message"
+    },
+    "errors.forbidden": {
+      "defaultMessage": "Forbidden.",
+      "description": "Forbidden error message"
+    },
+    "errors.invalid_id": {
+      "defaultMessage": "Invalid id.",
+      "description": "Invalid id error message"
+    },
+    "errors.not_found": {
+      "defaultMessage": "Not found.",
+      "description": "Not found error message"
+    },
+    "errors.inventory_not_found": {
+      "defaultMessage": "Inventory not found.",
+      "description": "Inventory not found error message"
+    },
+    "errors.internal_error": {
+      "defaultMessage": "Internal server error.",
+      "description": "Internal error message"
+    },
+    "errors.invalid_code": {
+      "defaultMessage": "Invalid code.",
+      "description": "Invalid pairing code error message"
+    },
+    "errors.already_used": {
+      "defaultMessage": "Code already used.",
+      "description": "Pairing code already used error message"
+    },
+    "errors.expired": {
+      "defaultMessage": "Code expired.",
+      "description": "Pairing code expired error message"
+    },
+    "errors.device_mismatch": {
+      "defaultMessage": "Device mismatch.",
+      "description": "Device mismatch error message"
+    },
+    "errors.revoked": {
+      "defaultMessage": "Device revoked.",
+      "description": "Revoked device error message"
+    },
+    "errors.conflict": {
+      "defaultMessage": "Conflict.",
+      "description": "Conflict error message"
+    },
+    "errors.barcode_in_use": {
+      "defaultMessage": "Barcode already in use.",
+      "description": "Barcode already in use error message"
+    },
+
+    "common.ok": {
+      "defaultMessage": "OK",
+      "description": "Confirm action"
+    },
+    "common.cancel": {
+      "defaultMessage": "Cancel",
+      "description": "Cancel/close action"
+    },
+    "common.close": {
+      "defaultMessage": "Close",
+      "description": "Close action"
+    },
+      "common.create": {
+        "defaultMessage": "Create",
+        "description": "Create action"
+      },
+    "common.save": {
+      "defaultMessage": "Save",
+      "description": "Save action"
+    },
+      "items.edit": {
+        "defaultMessage": "Edit Item",
+        "description": "Edit item action"
+      },
+      "items.new": {
+        "defaultMessage": "New item",
+        "description": "New item label"
+      },
+    "common.delete": {
+      "defaultMessage": "Delete",
+      "description": "Delete action"
+    },
+      "scan.start": {
+        "defaultMessage": "Scan",
+        "description": "Start scanning action"
+      },
+      "scan.stop": {
+        "defaultMessage": "Stop",
+        "description": "Stop scanning action"
+      },
+      "scan.override": {
+        "defaultMessage": "Override scan (choose item or create new)",
+        "description": "Override scan option"
+      },
+      "scan.scannerDisabled": {
+        "defaultMessage": "Scanner disabled",
+        "description": "Scanner disabled status"
+      },
+      "scan.newBarcode": {
+        "defaultMessage": "New barcode",
+        "description": "Status when barcode is new"
+      },
+      "scan.initialSyncRequired": {
+        "defaultMessage": "Initial sync required before offline scanning.",
+        "description": "Shown when bootstrap sync is required"
+      },
+      "scan.useSyncHint": {
+        "defaultMessage": "Use the Sync button in the header.",
+        "description": "Hint to run sync"
+      },
+      "scan.cameraPermissionRequired": {
+        "defaultMessage": "Camera permission required to scan items.",
+        "description": "Camera permission required message"
+      },
+      "scan.cameraPermissionRequiredShort": {
+        "defaultMessage": "Camera permission required",
+        "description": "Short camera permission required message"
+      },
+      "scan.enableCamera": {
+        "defaultMessage": "Enable camera",
+        "description": "Button to request camera permission"
+      },
+      "scan.scanning": {
+        "defaultMessage": "Scanning…",
+        "description": "Scan status while camera is active"
+      },
+      "scan.content.scanning": {
+        "defaultMessage": "Scanning",
+        "description": "Content description while scanning"
+      },
+      "scan.content.success": {
+        "defaultMessage": "Scan success",
+        "description": "Content description for scan success"
+      },
+      "scan.content.failed": {
+        "defaultMessage": "Scan failed",
+        "description": "Content description for scan failure"
+      },
+    "common.edit": {
+      "defaultMessage": "Edit",
+      "description": "Edit action"
+    },
+    "status.ready": {
+      "defaultMessage": "Ready",
+      "description": "Generic ready status"
+    },
+      "status.saved": {
+        "defaultMessage": "Saved: {name}",
+        "description": "Status text for save success"
+      },
+      "status.saveFailed": {
+        "defaultMessage": "Save failed: {error}",
+        "description": "Status text for save failure"
+      },
+    "accessibility.corruptedBarcode": {
+      "defaultMessage": "Corrupted barcode",
+      "description": "Accessibility label for corrupted barcode indicator"
+    },
+
+    "home.title": {
+      "defaultMessage": "Inventory",
+      "description": "Android home screen title"
+    },
+    "home.sync": {
+      "defaultMessage": "Sync",
+      "description": "Android home sync button"
+    },
+    "home.status": {
+      "defaultMessage": "Status: {status}",
+      "description": "Android home status label"
+    },
+    "home.inventories": {
+      "defaultMessage": "Inventories",
+      "description": "Android navigation to inventories management"
+    },
+    "home.unpair": {
+      "defaultMessage": "Unpair",
+      "description": "Android unpair action"
+    },
+    "home.pair": {
+      "defaultMessage": "Pair",
+      "description": "Android pair action"
+    },
+    "home.status.syncing": {
+      "defaultMessage": "Syncing…",
+      "description": "Android home sync status"
+    },
+    "home.status.synced": {
+      "defaultMessage": "Synced",
+      "description": "Android home sync status"
+    },
+    "home.status.syncedCounts": {
+      "defaultMessage": "Synced (items={items}, applied={applied})",
+      "description": "Android home sync status with counts"
+    },
+    "home.status.syncFailed": {
+      "defaultMessage": "Sync failed: {error}",
+      "description": "Android home sync failure status"
+    },
+    "home.status.pairingCleared": {
+      "defaultMessage": "Pairing cleared",
+      "description": "Android home unpair success status"
+    },
+    "home.connection.connected": {
+      "defaultMessage": "Connected to Desktop (pending scans: {pendingScans}, pending creates: {pendingCreates})",
+      "description": "Android home connection status when online"
+    },
+    "home.connection.offline": {
+      "defaultMessage": "Offline — scans will queue (pending scans: {pendingScans}, pending creates: {pendingCreates})",
+      "description": "Android home connection status when offline"
+    },
+    "home.connection.checking": {
+      "defaultMessage": "Checking connection… (pending scans: {pendingScans}, pending creates: {pendingCreates})",
+      "description": "Android home connection status while checking"
+    },
+    "home.lastSync": {
+      "defaultMessage": "Last sync: {date}",
+      "description": "Android home last sync timestamp"
+    },
+    "home.notSyncedYet": {
+      "defaultMessage": "Not synced yet",
+      "description": "Android home shown before first sync"
+    },
+    "home.search": {
+      "defaultMessage": "Search",
+      "description": "Android home search label"
+    },
+    "home.items.title": {
+      "defaultMessage": "Items",
+      "description": "Android home items section title"
+    },
+    "home.items.empty.noMatch": {
+      "defaultMessage": "No matching items. Clear search or filters to see more.",
+      "description": "Android home empty state when filters/search applied"
+    },
+    "home.items.empty.none": {
+      "defaultMessage": "No items yet. Add an item or scan a barcode.",
+      "description": "Android home empty state with no items"
+    },
+    "home.scan.title": {
+      "defaultMessage": "Scan",
+      "description": "Android home scan section title"
+    },
+    "home.scan.hint": {
+      "defaultMessage": "Scan to increment quantity. Offline scans will queue.",
+      "description": "Android home scan hint"
+    },
+
+    "filters.category.label": {
+      "defaultMessage": "Category",
+      "description": "Android category filter label"
+    },
+    "filters.category.all": {
+      "defaultMessage": "All Categories",
+      "description": "Android category filter all option"
+    },
+    "filters.location.label": {
+      "defaultMessage": "Location",
+      "description": "Android location filter label"
+    },
+    "filters.location.all": {
+      "defaultMessage": "All Locations",
+      "description": "Android location filter all option"
+    },
+
+    "mode.title": {
+      "defaultMessage": "Inventory",
+      "description": "Android mode screen title"
+    },
+    "mode.subtitle": {
+      "defaultMessage": "Choose how this device stores inventory.",
+      "description": "Android mode screen subtitle"
+    },
+    "mode.status.startingLocal": {
+      "defaultMessage": "Starting local inventory…",
+      "description": "Android mode screen status while starting local-only"
+    },
+    "mode.pairWithDesktop": {
+      "defaultMessage": "Pair with Desktop",
+      "description": "Android mode screen paired option"
+    },
+    "mode.localOnly": {
+      "defaultMessage": "Local-only (this phone)",
+      "description": "Android mode screen local-only option"
+    },
+    "mode.localOnlyHint": {
+      "defaultMessage": "Local-only keeps everything on this device. You can still pair later.",
+      "description": "Android mode screen local-only hint"
+    },
+
+    "pair.title": {
+      "defaultMessage": "Inventory (LAN)",
+      "description": "Android pairing screen title"
+    },
+    "pair.status.scanQr": {
+      "defaultMessage": "Scan the Desktop pairing QR",
+      "description": "Android pairing status prompt"
+    },
+    "pair.status.pasteFirst": {
+      "defaultMessage": "Paste pairing JSON first",
+      "description": "Android pairing status when manual JSON is empty"
+    },
+    "pair.status.invalidJson": {
+      "defaultMessage": "Invalid pairing JSON",
+      "description": "Android pairing status when JSON is invalid"
+    },
+    "pair.status.pairing": {
+      "defaultMessage": "Pairing…",
+      "description": "Android pairing status while pairing"
+    },
+    "pair.status.paired": {
+      "defaultMessage": "Paired",
+      "description": "Android pairing status when paired"
+    },
+    "pair.status.pairFailed": {
+      "defaultMessage": "Pairing failed: {error}",
+      "description": "Android pairing status when pairing fails"
+    },
+    "pair.status.invalidJsonWithError": {
+      "defaultMessage": "Invalid pairing JSON: {error}",
+      "description": "Android pairing status when JSON parse fails"
+    },
+    "pair.status.scanCancelled": {
+      "defaultMessage": "Scan cancelled",
+      "description": "Android pairing status when scan is cancelled"
+    },
+    "pair.prompt.scanQr": {
+      "defaultMessage": "Scan desktop pairing QR",
+      "description": "Android QR scanner prompt for pairing"
+    },
+    "pair.button.scanQr": {
+      "defaultMessage": "Scan pairing QR",
+      "description": "Android pairing scan button"
+    },
+    "pair.orPaste": {
+      "defaultMessage": "Or paste pairing JSON",
+      "description": "Android pairing manual JSON section label"
+    },
+    "pair.label.payloadShape": {
+      "defaultMessage": "{ baseUrl, token }",
+      "description": "Android pairing payload JSON hint label"
+    },
+    "pair.button.usePasted": {
+      "defaultMessage": "Use pasted JSON",
+      "description": "Android pairing apply manual JSON button"
+    },
+    "pair.hint.offlineInitialSync": {
+      "defaultMessage": "Offline scanning requires an initial sync first.",
+      "description": "Android pairing hint about offline scanning"
+    },
+
+    "pairing.title": {
+      "defaultMessage": "Pairing & Inventories",
+      "description": "Android pairing management screen title"
+    },
+    "pairing.desktop": {
+      "defaultMessage": "Desktop: {baseUrl}",
+      "description": "Android pairing management desktop label"
+    },
+    "pairing.desktop.notPaired": {
+      "defaultMessage": "(not paired)",
+      "description": "Android pairing management not paired value"
+    },
+    "pairing.status": {
+      "defaultMessage": "Status: {status}",
+      "description": "Android pairing management status label"
+    },
+    "pairing.button.refresh": {
+      "defaultMessage": "Refresh",
+      "description": "Android pairing management refresh button"
+    },
+    "pairing.button.done": {
+      "defaultMessage": "Done",
+      "description": "Android pairing management done button"
+    },
+    "pairing.button.unpair": {
+      "defaultMessage": "Unpair",
+      "description": "Android pairing management unpair action"
+    },
+    "pairing.selectInventory": {
+      "defaultMessage": "Select inventory",
+      "description": "Android pairing management inventory selection heading"
+    },
+    "pairing.current": {
+      "defaultMessage": "Current: {current}",
+      "description": "Android pairing management current inventory label"
+    },
+    "pairing.current.desktopActive": {
+      "defaultMessage": "(desktop active)",
+      "description": "Android pairing management current value when following desktop active inventory"
+    },
+    "pairing.status.loading": {
+      "defaultMessage": "Loading inventories…",
+      "description": "Android pairing management status while loading inventories"
+    },
+    "pairing.status.loaded": {
+      "defaultMessage": "Loaded",
+      "description": "Android pairing management status when inventories loaded"
+    },
+    "pairing.status.loadFailed": {
+      "defaultMessage": "Load failed: {error}",
+      "description": "Android pairing management load failure status"
+    },
+    "pairing.status.unpaired": {
+      "defaultMessage": "Unpaired",
+      "description": "Android pairing management status after unpair"
+    },
+    "pairing.status.switching": {
+      "defaultMessage": "Switching…",
+      "description": "Android pairing management status while switching inventories"
+    },
+    "pairing.status.switched": {
+      "defaultMessage": "Switched",
+      "description": "Android pairing management status when switch succeeds"
+    },
+    "pairing.status.switchFailed": {
+      "defaultMessage": "Switch failed: {error}",
+      "description": "Android pairing management status when switch fails"
+    },
+    "pairing.button.switch": {
+      "defaultMessage": "Switch",
+      "description": "Android pairing management switch button"
+    },
+    "pairing.status.appending": {
+      "defaultMessage": "Appending…",
+      "description": "Android pairing management status while appending local inventory"
+    },
+    "pairing.status.appended": {
+      "defaultMessage": "Appended",
+      "description": "Android pairing management status when append succeeds"
+    },
+    "pairing.status.appendFailed": {
+      "defaultMessage": "Append failed: {error}",
+      "description": "Android pairing management status when append fails"
+    },
+    "pairing.button.append": {
+      "defaultMessage": "Append",
+      "description": "Android pairing management append button"
+    },
+    "filters.category.next": {
+      "defaultMessage": "Next category",
+      "description": "Android item form helper to advance to the next category"
+    },
+    "filters.location.next": {
+      "defaultMessage": "Next location",
+      "description": "Android item form helper to advance to the next location"
+    },
+
+    "status.saving": {
+      "defaultMessage": "Saving…",
+      "description": "Status shown while saving"
+    },
+
+    "scan.barcodeDialog.title": {
+      "defaultMessage": "Scan barcode",
+      "description": "Title for the inline barcode scanner dialog"
+    },
+    "scan.form.scanned": {
+      "defaultMessage": "Scanned",
+      "description": "Status shown after a barcode is scanned into the item form"
+    },
+
+    "items.empty.noItemsYetCanEdit": {
+      "defaultMessage": "No items yet. Add an item or scan a barcode.",
+      "description": "Empty items message when user can edit"
+    },
+    "items.empty.noItemsYetReadOnly": {
+      "defaultMessage": "No items yet.",
+      "description": "Empty items message when read-only"
+    },
+    "items.empty.noMatch": {
+      "defaultMessage": "No matching items. Clear search or filters to see more.",
+      "description": "Empty items message when filters/search yields no matches"
+    },
+    "items.empty.noItemsToDisplay": {
+      "defaultMessage": "No items to display.",
+      "description": "Empty items message when items exist but nothing to render"
+    },
+
+    "confirm.discardUnsavedChanges": {
+      "defaultMessage": "Discard unsaved changes?",
+      "description": "Confirm discarding unsaved form changes"
+    },
+    "confirm.deleteItem": {
+      "defaultMessage": "Delete \"{name}\"?",
+      "description": "Confirm deleting an item"
+    },
+    "confirm.deleteCategory": {
+      "defaultMessage": "Delete category \"{name}\"? Items will be uncategorized.",
+      "description": "Confirm deleting a category"
+    },
+    "confirm.deleteLocation": {
+      "defaultMessage": "Delete location \"{name}\"? Items will be unassigned.",
+      "description": "Confirm deleting a location"
+    },
+
+    "prompt.renameCategory": {
+      "defaultMessage": "Rename category",
+      "description": "Prompt title for renaming a category"
+    },
+    "prompt.renameLocation": {
+      "defaultMessage": "Rename location",
+      "description": "Prompt title for renaming a location"
+    },
+
+    "status.canceled": {
+      "defaultMessage": "Canceled",
+      "description": "Status for canceling an operation"
+    },
+    "status.quantityUpdated": {
+      "defaultMessage": "Quantity updated: {name}",
+      "description": "Status after quantity update"
+    },
+    "status.quantityError": {
+      "defaultMessage": "Quantity error: {error}",
+      "description": "Status after quantity update failure"
+    },
+    "status.deleted": {
+      "defaultMessage": "Deleted: {name}",
+      "description": "Status after delete"
+    },
+    "status.deleteError": {
+      "defaultMessage": "Delete error: {error}",
+      "description": "Status after delete failure"
+    },
+    "status.loadedItems": {
+      "defaultMessage": "Loaded {count} items{suffixPart}",
+      "description": "Status after loading items list"
+    },
+    "status.categoryRenamed": {
+      "defaultMessage": "Category renamed",
+      "description": "Status after renaming a category"
+    },
+    "status.categoryDeleted": {
+      "defaultMessage": "Category deleted",
+      "description": "Status after deleting a category"
+    },
+    "status.locationRenamed": {
+      "defaultMessage": "Location renamed",
+      "description": "Status after renaming a location"
+    },
+    "status.locationDeleted": {
+      "defaultMessage": "Location deleted",
+      "description": "Status after deleting a location"
+    },
+
+    "dialog.item.editTitle": {
+      "defaultMessage": "Edit Item #{id}",
+      "description": "Item dialog title when editing"
+    },
+    "dialog.item.addTitle": {
+      "defaultMessage": "Add Item",
+      "description": "Item dialog title when adding"
+    },
+
+    "item.altBarcodes.none": {
+      "defaultMessage": "(none)",
+      "description": "Alternate barcodes empty state"
+    },
+    "item.altBarcodes.errorLoading": {
+      "defaultMessage": "(error loading)",
+      "description": "Alternate barcodes error state"
+    },
+
+    "dialog.pair.expiredAt": {
+      "defaultMessage": "Expired ({at})",
+      "description": "Pairing code expiry text when expired"
+    },
+    "dialog.pair.inSecondsAt": {
+      "defaultMessage": "In {sec}s ({at})",
+      "description": "Pairing code expiry text while counting down"
+    },
+    "dialog.pair.paired": {
+      "defaultMessage": "Paired",
+      "description": "Pairing status when code consumed"
+    },
+
+    "errors.pairCodeGenerationFailed": {
+      "defaultMessage": "Failed to generate pairing code",
+      "description": "Error when pairing code cannot be generated"
+    },
+      "validation.nameRequired": {
+        "defaultMessage": "Name is required",
+        "description": "Validation message for required name"
+      },
+      "corrupted.title": {
+        "defaultMessage": "Corrupted/illegible",
+        "description": "Corrupted scans section title"
+      },
+      "corrupted.hint": {
+        "defaultMessage": "Unknown scans are kept here until rescanned.",
+        "description": "Corrupted scans hint"
+      },
+      "corrupted.countFormat": {
+        "defaultMessage": "count={count}",
+        "description": "Corrupted scan count display"
+      },
+      "corrupted.rescanNow": {
+        "defaultMessage": "Rescan now to resolve",
+        "description": "Status when rescan is needed"
+      },
+      "corrupted.rescan": {
+        "defaultMessage": "Rescan",
+        "description": "Rescan action"
+      },
+      "dialog.selectItem.title": {
+        "defaultMessage": "Select item",
+        "description": "Select item dialog title"
+      },
+      "dialog.selectItem.barcode": {
+        "defaultMessage": "Barcode: {barcode}",
+        "description": "Select item dialog barcode line"
+      },
+      "dialog.selectItem.createNew": {
+        "defaultMessage": "Create new item",
+        "description": "Select item dialog create new item button"
+      },
+      "categories.new": {
+        "defaultMessage": "New category",
+        "description": "New category dialog title"
+      },
+      "locations.new": {
+        "defaultMessage": "New location",
+        "description": "New location dialog title"
+      },
+
+    "items.title": {
+      "defaultMessage": "Items",
+      "description": "Items list title"
+    },
+    "items.add": {
+      "defaultMessage": "Add Item",
+      "description": "Add item action"
+    },
+
+    "items.qtyFormat": {
+      "defaultMessage": "Qty: {qty}",
+      "description": "Quantity label with value"
+    },
+    "items.idFormat": {
+      "defaultMessage": "#{id}",
+      "description": "Item id label with value"
+    },
+
+    "item.field.name": {
+      "defaultMessage": "Name",
+      "description": "Item name field label"
+    },
+    "item.field.description": {
+      "defaultMessage": "Description",
+      "description": "Item description field label"
+    },
+    "item.field.quantity": {
+      "defaultMessage": "Quantity",
+      "description": "Item quantity field label"
+    },
+    "item.field.category": {
+      "defaultMessage": "Category",
+      "description": "Item category field label"
+    },
+    "item.field.location": {
+      "defaultMessage": "Location",
+      "description": "Item location field label"
+    },
+    "item.field.barcode": {
+      "defaultMessage": "Barcode",
+      "description": "Item barcode field label"
+    },
+    "item.field.serialNumber": {
+      "defaultMessage": "Serial number",
+      "description": "Item serial number field label"
+    },
+
+    "item.detail.quantity": {
+      "defaultMessage": "Quantity: {qty}",
+      "description": "Item details quantity line"
+    },
+    "item.detail.barcode": {
+      "defaultMessage": "Barcode: {barcode}",
+      "description": "Item details barcode line"
+    },
+    "item.detail.barcodeCorrupted": {
+      "defaultMessage": "Barcode: (corrupted/unreadable)",
+      "description": "Item details corrupted barcode line"
+    },
+    "item.detail.serial": {
+      "defaultMessage": "Serial: {serial}",
+      "description": "Item details serial line"
+    },
+
+    "scan.quick": {
+      "defaultMessage": "Quick scan",
+      "description": "Desktop quick scan label"
+    },
+    "scan.webcam": {
+      "defaultMessage": "Webcam scan",
+      "description": "Desktop webcam scan action"
+    },
+
+    "sync.title": {
+      "defaultMessage": "Sync",
+      "description": "Sync section/title"
+    },
+    "sync.status.connected": {
+      "defaultMessage": "Connected",
+      "description": "Sync status connected"
+    },
+    "sync.status.disconnected": {
+      "defaultMessage": "Disconnected",
+      "description": "Sync status disconnected"
+    },
+
+    "errors.unknown": {
+      "defaultMessage": "Something went wrong.",
+      "description": "Fallback user-facing error message"
+    }
+  }
+}

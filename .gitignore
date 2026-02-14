@@ -1,0 +1,79 @@
+﻿# dependencies
+**/node_modules/
+
+# ignoring any python virtual environments (if used for any scripts)
+.venv/
+inventory-app/desktop/scripts/.certbot-env/
+
+# common build outputs
+**/dist/
+**/out/
+**/build/
+**/release/
+**/.next/
+
+# Android local/build artifacts
+inventory-app/android/.gradle/
+inventory-app/android/.idea/
+inventory-app/android/local.properties
+
+# Desktop packaging artifacts
+inventory-app/desktop/.stage/
+inventory-app/desktop/dist-electron/
+
+# Android release upload artifacts
+inventory-app/android/app/artifacts/
+**/.nuxt/
+**/.output/
+
+# logs
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+**/.idea/
+
+# repo-root binary docs (keep repo source-first)
+/*.pdf
+/*.docx
+
+# --- Inventory app (keep repo source-only) ---
+# Local SQLite databases + WAL/SHM
+**/data/*.sqlite
+**/data/*.sqlite-*
+**/*.sqlite
+**/*.sqlite-*
+
+# Electron/desktop runtime data (varies per machine)
+**/inventories/
+
+# Android/Gradle local & generated
+**/.gradle/
+**/*.iml
+android/local.properties
+**/local.properties
+
+# Google Drive sync OAuth secrets/tokens
+**/credentials.json
+**/token.json
+
+# Google Drive sync runtime caches
+**/google-drive-token.json
+**/google-drive-file.json
+**/google-drive-*.json
+
+# Security
+.env
+.env.*
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+
+# Vim/Editor
+.swp
+
+# Vite
+.vite/

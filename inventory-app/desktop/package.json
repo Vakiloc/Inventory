@@ -1,0 +1,73 @@
+{
+  "name": "inventory-desktop",
+  "version": "0.1.4",
+  "private": true,
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "concurrently --kill-others --success first --kill-signal SIGINT \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "wait-on http://localhost:5174/ && cross-env VITE_DEV_SERVER_URL=http://localhost:5174 electron .",
+    "build": "vite build",
+    "start": "electron .",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "stage:server": "node scripts/prepare-packaged-server.mjs",
+    "dist:win": "npm run build && npm run stage:server && node scripts/dist-win.mjs",
+    "setup:certs": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-certbot.ps1"
+  },
+  "dependencies": {
+    "@simplewebauthn/browser": "^13.2.2",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
+    "bonjour-service": "^1.3.0",
+    "ngrok": "^5.0.0-beta.2",
+    "node-forge": "^1.3.3",
+    "qrcode": "^1.5.4",
+    "selfsigned": "^5.5.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/user-event": "^14.6.1",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.9",
+    "electron-builder": "^24.13.3",
+    "jsdom": "^24.1.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.9",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.inventory.desktop",
+    "productName": "Inventory",
+    "artifactName": "inventory_v${version}.${ext}",
+    "electronVersion": "30.0.9",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "src/**",
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".stage/server",
+        "to": "server"
+      }
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="app.title">Household Inventory</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- QR Zoom Dialog -->
+    <dialog id="qrZoomDialog" class="modal">
+      <div class="modal-content zoom-content">
+        <h3 data-i18n="dialog.pair.zoom">Scan QR Code</h3>
+        <img id="pairQrZoom" class="qr-zoom" src="" />
+        <div class="actions">
+          <button id="closeQrZoom" class="btn" data-i18n="dialog.close">Close</button>
+        </div>
+      </div>
+    </dialog>
+
+    <header class="topbar">
+      <div class="brand" data-i18n="app.title">Household Inventory</div>
+      <div class="grow"></div>
+      <input id="search" class="search" data-i18n-placeholder="topbar.search.placeholder" placeholder="Search name / barcode / serial" />
+      <select id="localeSelect" class="select" style="width: 140px;">
+        <option value="en" data-i18n="topbar.locale.en">English</option>
+        <option value="es" data-i18n="topbar.locale.es">Spanish</option>
+      </select>
+      <button id="sync" class="btn" data-i18n="topbar.sync">Sync</button>
+      <button id="share" class="btn" data-i18n="topbar.share">Share</button>
+      <button id="scanAccessCode" class="btn" data-i18n="topbar.scanAccessCode">Scan Access Code</button>
+      <button id="add" class="btn primary" data-i18n="topbar.addItem">Add Item</button>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="section">
+          <div class="section-title" data-i18n="sidebar.inventory.title">Inventory</div>
+          <select id="inventorySelect" class="select"></select>
+          <div class="row">
+            <input id="newInventory" class="input" data-i18n-placeholder="sidebar.inventory.new.placeholder" placeholder="New inventory" />
+            <button id="addInventory" class="btn" data-i18n="sidebar.inventory.create">Create</button>
+          </div>
+          <div class="hint" data-i18n="sidebar.inventory.hint">Each inventory uses a separate local database file.</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title" data-i18n="sidebar.role.title">Role</div>
+          <select id="role" class="select">
+            <option value="owner" data-i18n="sidebar.role.owner">Owner/Admin</option>
+            <option value="editor" data-i18n="sidebar.role.editor">Collaborator (Editor)</option>
+            <option value="viewer" data-i18n="sidebar.role.viewer">Viewer (Read-only)</option>
+          </select>
+          <div class="hint" data-i18n="sidebar.role.hint">Viewer mode disables editing.</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title" data-i18n="sidebar.category.title">Category</div>
+          <select id="categoryFilter" class="select"></select>
+          <div class="row">
+            <input id="newCategory" class="input" data-i18n-placeholder="sidebar.category.new.placeholder" placeholder="New category" />
+            <button id="addCategory" class="btn" data-i18n="sidebar.category.add">Add</button>
+          </div>
+          <div class="row">
+            <button id="editCategory" class="btn" data-i18n="sidebar.category.rename">Rename</button>
+            <button id="deleteCategory" class="btn danger" data-i18n="sidebar.category.delete">Delete</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title" data-i18n="sidebar.location.title">Location</div>
+          <select id="locationFilter" class="select"></select>
+          <div class="row">
+            <input id="newLocation" class="input" data-i18n-placeholder="sidebar.location.new.placeholder" placeholder="New location" />
+            <button id="addLocation" class="btn" data-i18n="sidebar.location.add">Add</button>
+          </div>
+          <div class="row">
+            <button id="editLocation" class="btn" data-i18n="sidebar.location.rename">Rename</button>
+            <button id="deleteLocation" class="btn danger" data-i18n="sidebar.location.delete">Delete</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title" data-i18n="sidebar.scan.title">Quick scan</div>
+          <input id="scanInput" class="input" data-i18n-placeholder="sidebar.scan.placeholder" placeholder="Click here and scan" />
+          <div class="hint" data-i18n="sidebar.scan.hint">USB scanners usually type + Enter.</div>
+          <label class="hint" style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+            <input id="scanNoIncrement" type="checkbox" />
+            <span data-i18n="sidebar.scan.override">Override scan (choose item or create new)</span>
+          </label>
+          <button id="webcamScan" class="btn" data-i18n="sidebar.scan.webcam" style="margin-top:10px; width:100%;">Webcam scan</button>
+        </div>
+
+        <div class="section">
+          <div class="section-title" data-i18n="sidebar.status.title">Status</div>
+          <div id="status" class="status" data-i18n="sidebar.status.starting">Starting…</div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <table class="table">
+          <thead>
+            <tr>
+              <th></th>
+              <th data-i18n="table.name">Name</th>
+              <th data-i18n="table.qty">Qty</th>
+              <th data-i18n="table.category">Category</th>
+              <th data-i18n="table.location">Location</th>
+              <th data-i18n="table.barcode">Barcode</th>
+              <th data-i18n="table.updated">Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="items"></tbody>
+        </table>
+      </main>
+    </div>
+
+    <dialog id="itemDialog" class="dialog">
+      <form id="itemForm" class="form">
+        <div class="form-title" id="dialogTitle" data-i18n="dialog.item.title">Item</div>
+        <input type="hidden" id="itemId" />
+
+        <label class="label" data-i18n="item.field.name">Name</label>
+        <input id="name" class="input" required />
+
+        <label class="label" data-i18n="item.field.description">Description</label>
+        <textarea id="description" class="input" rows="3"></textarea>
+
+        <div class="grid2">
+          <div>
+            <label class="label" data-i18n="item.field.quantity">Quantity</label>
+            <input id="quantity" class="input" type="number" min="0" value="1" />
+          </div>
+          <div>
+            <label class="label" data-i18n="item.field.value">Value</label>
+            <input id="value" class="input" type="number" step="0.01" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <label class="label" data-i18n="item.field.category">Category</label>
+            <select id="categoryId" class="select"></select>
+          </div>
+          <div>
+            <label class="label" data-i18n="item.field.location">Location</label>
+            <select id="locationId" class="select"></select>
+          </div>
+        </div>
+
+        <label class="label" data-i18n="item.field.barcode">Barcode</label>
+        <div class="row">
+          <input id="barcode" class="input" />
+          <button id="scanBarcode" class="btn" data-i18n="item.field.barcode.scan" type="button">Scan</button>
+        </div>
+
+        <label class="hint" style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+          <input id="barcodeCorrupted" type="checkbox" />
+          <span data-i18n="item.field.barcode.corrupted">Corrupted / unreadable barcode</span>
+        </label>
+
+        <div id="altBarcodesSection" style="display:none;">
+          <label class="label" data-i18n="item.altBarcodes.title">Also matches these barcodes</label>
+          <div id="altBarcodes" class="mono" style="font-size:12px; color: var(--muted);"></div>
+          <div class="row" style="margin-top:8px;">
+            <input id="altBarcodeInput" class="input" data-i18n-placeholder="item.altBarcodes.add.placeholder" placeholder="Add another barcode" />
+            <button id="addAltBarcode" class="btn" data-i18n="item.altBarcodes.add" type="button">Add</button>
+          </div>
+          <div class="hint" data-i18n="item.altBarcodes.hint">Use this to combine multiple barcodes into one item.</div>
+        </div>
+
+        <label class="label" data-i18n="item.field.serialNumber">Serial number</label>
+        <input id="serial" class="input" />
+
+        <label class="label" data-i18n="item.field.purchaseDate">Purchase date</label>
+        <input id="purchase" class="input" data-i18n-placeholder="item.field.purchaseDate.placeholder" placeholder="YYYY-MM-DD" />
+
+        <label class="label" data-i18n="item.field.warranty">Warranty info</label>
+        <input id="warranty" class="input" />
+
+        <label class="label" data-i18n="item.field.photo">Photo path (desktop file path)</label>
+        <input id="photo" class="input" />
+
+        <div class="actions">
+          <button id="delete" class="btn danger" data-i18n="item.actions.delete" type="button">Delete</button>
+          <div class="grow"></div>
+          <button id="cancelItem" class="btn" data-i18n="item.actions.cancel" type="button">Cancel</button>
+          <button id="save" class="btn primary" data-i18n="item.actions.save" type="submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="pairDialog" class="dialog">
+      <form method="dialog" class="form">
+        <div class="form-title" data-i18n="dialog.pair.title">LAN pairing</div>
+        <div class="hint" data-i18n="dialog.pair.hint">Scan this QR on mobile to pair. The QR expires after a short period.</div>
+        <div class="pair-grid">
+          <img id="pairQr" class="qr" data-i18n-attr="alt:dialog.pair.qr.alt" alt="Pairing QR" />
+          <div>
+            <div class="label" data-i18n="dialog.pair.baseUrl">Base URL</div>
+            <div id="pairUrl" class="mono"></div>
+
+            <div class="label" data-i18n="dialog.pair.expires" style="margin-top:10px;">Expires</div>
+            <div id="pairExpires" class="mono"></div>
+
+            <div class="label" data-i18n="dialog.pair.payload" style="margin-top:10px;">Pairing JSON (copy/paste)</div>
+            <textarea id="pairPayload" class="input" rows="4" readonly style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></textarea>
+            <button id="copyPairPayload" class="btn" data-i18n="dialog.pair.copy" type="button" style="margin-top:8px; width:100%;">Copy pairing JSON</button>
+          </div>
+        </div>
+        <div class="actions">
+          <div class="grow"></div>
+          <button class="btn primary" data-i18n="dialog.pair.close" value="default">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="scanDialog" class="dialog">
+      <form method="dialog" class="form">
+        <div class="form-title" data-i18n="dialog.webcamScan.title">Webcam scan</div>
+        <div class="hint" data-i18n="dialog.webcamScan.hint">Point the camera at a barcode (UPC/EAN/Code128). It will auto-detect.</div>
+
+        <video id="scanVideo" autoplay playsinline style="width:100%; border:1px solid var(--border); border-radius:12px;"></video>
+
+        <div class="actions">
+          <div class="grow"></div>
+          <button id="scanCancel" class="btn" data-i18n="dialog.webcamScan.cancel" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="chooseItemDialog" class="dialog">
+      <form method="dialog" class="form">
+        <div id="chooseItemTitle" class="form-title" data-i18n="dialog.chooseItem.title">Choose item</div>
+        <div id="chooseItemHint" class="hint"></div>
+
+        <div class="label" data-i18n="dialog.chooseItem.items">Items</div>
+        <select id="chooseItemSelect" class="select" size="12" style="height:320px;"></select>
+
+        <div class="actions">
+          <button class="btn" data-i18n="dialog.chooseItem.cancel" value="cancel">Cancel</button>
+          <div class="grow"></div>
+          <button id="chooseItemCreate" class="btn" data-i18n="dialog.chooseItem.create" type="button">Create new item</button>
+          <button class="btn primary" data-i18n="dialog.chooseItem.useSelected" value="choose">Use selected</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="app.js"></script>
+      
+      
+          
+
+  </body>
+</html>
+
+
+
+
+

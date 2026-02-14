@@ -1,0 +1,17 @@
+# Node
+node_modules/
+
+# Desktop build artifacts
+desktop/.stage/
+desktop/dist-electron/
+desktop/dist/
+
+# Android build artifacts
+android/app/artifacts/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
