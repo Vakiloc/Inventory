@@ -16,7 +16,7 @@
     "@simplewebauthn/types": "^12.0.0",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
-    "express": "^4.19.2",
+    "express": "^5.2.1",
     "googleapis": "^140.0.1",
     "zod": "^3.24.1"
   },
