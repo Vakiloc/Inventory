@@ -178,14 +178,61 @@ try {
     }
 
     # --- Verification ---
+    Write-Host "Verifying certificate files..." -ForegroundColor Yellow
+
+    # Log directory structure for debugging
+    if (Test-Path $ConfigDir) {
+        $liveDir = Join-Path $ConfigDir "live"
+        if (Test-Path $liveDir) {
+            Write-Host "Available certificate directories:" -ForegroundColor Gray
+            Get-ChildItem $liveDir | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor Gray }
+        }
+    }
+
     $MainDomain = $targets[0]
     $LiveCertDir = Join-Path $ConfigDir "live\$MainDomain"
+
+    # Check for alternate domain naming (Certbot may strip .duckdns.org)
+    if (-not (Test-Path $LiveCertDir)) {
+        $altDomain = $MainDomain -replace '\.duckdns\.org$', ''
+        $altLiveCertDir = Join-Path $ConfigDir "live\$altDomain"
+
+        if (Test-Path $altLiveCertDir) {
+            Write-Host "Using normalized domain: $altDomain" -ForegroundColor Yellow
+            $MainDomain = $altDomain
+            $LiveCertDir = $altLiveCertDir
+        } else {
+            throw "Certificate directory not found at: $LiveCertDir or $altLiveCertDir"
+        }
+    }
+
     $KeyPath = Join-Path $LiveCertDir "privkey.pem"
     $CertPath = Join-Path $LiveCertDir "fullchain.pem"
 
-    if ((-not (Test-Path $KeyPath)) -or (-not (Test-Path $CertPath))) {
-        throw "Files not found at expected path: $LiveCertDir"
+    # Verify files exist and are non-empty
+    if (-not (Test-Path $KeyPath)) {
+        throw "Private key not found: $KeyPath"
     }
+    if (-not (Test-Path $CertPath)) {
+        throw "Certificate not found: $CertPath"
+    }
+
+    $keySize = (Get-Item $KeyPath).Length
+    $certSize = (Get-Item $CertPath).Length
+
+    if ($keySize -eq 0) {
+        throw "Private key file is empty: $KeyPath"
+    }
+    if ($certSize -eq 0) {
+        throw "Certificate file is empty: $CertPath"
+    }
+
+    # Ensure files are fully flushed to disk
+    Start-Sleep -Milliseconds 500
+
+    Write-Host "Certificate verified:" -ForegroundColor Green
+    Write-Host "  Key:  $KeyPath ($keySize bytes)" -ForegroundColor Gray
+    Write-Host "  Cert: $CertPath ($certSize bytes)" -ForegroundColor Gray
 
     Write-Host "Success! Certificate Generated." -ForegroundColor Green
     

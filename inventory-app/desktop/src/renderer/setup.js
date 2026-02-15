@@ -100,14 +100,37 @@
 
         log(`Starting Certificate Generation for: ${subdomains.join(', ')}...`);
         log('Check your Taskbar for a PowerShell/Admin prompt.');
+        log('This may take 2-3 minutes...');
+        log('');
 
         const result = await window.setup.generateCert({ subdomains, token, email });
 
         if (!result.success) {
-            throw new Error(result.message || 'Unknown error during generation.');
+            log('');
+            log('─────────────────────────────');
+            log('❌ CERTIFICATE GENERATION FAILED');
+            log('─────────────────────────────');
+            log(result.message || 'Unknown error');
+
+            if (result.details) {
+                log('');
+                log('Details:');
+                log(result.details);
+            }
+
+            log('');
+            log('Common solutions:');
+            log('  • Verify DuckDNS token at https://www.duckdns.org');
+            log('  • Ensure domains are registered to your account');
+            log('  • Check PowerShell window for Certbot errors');
+            log('  • Wait 5 minutes if domain was just created (DNS propagation)');
+            log('─────────────────────────────');
+
+            throw new Error('Certificate generation failed. See details above.');
         }
 
-        log('Certificate Generated Successfully!');
+        log('✓ Certificate Generated Successfully!');
+        log('');
         
         // Auto-proceed to Save & Start
         await saveAndStart({
@@ -135,18 +158,26 @@
 
     async function saveAndStart(config) {
         log('Validating configuration and starting server...');
+
         const result = await window.setup.validateAndSave(config);
-        
+
         if (result.success) {
-            log('Server Started! Redirecting...');
+            log('✓ Server Started Successfully!');
+            log('Redirecting to application...');
             btnAction.textContent = 'Success!';
-            // App should likely reload or redirect here automatically based on main process logic,
-            // but in case it waits for us:
+
             setTimeout(() => {
                 log('Done.');
             }, 1000);
         } else {
-            throw new Error(result.message);
+            log('');
+            log('─────────────────────────────');
+            log('❌ VALIDATION FAILED');
+            log('─────────────────────────────');
+            log(result.message);
+            log('─────────────────────────────');
+
+            throw new Error('Validation failed. See details above.');
         }
     }
 
