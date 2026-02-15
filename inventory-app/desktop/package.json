@@ -1,6 +1,6 @@
 {
   "name": "inventory-desktop",
-  "version": "0.1.4",
+  "version": "0.1.5-claude",
   "private": true,
   "type": "module",
   "main": "src/main.js",

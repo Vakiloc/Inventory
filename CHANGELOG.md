@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.5-claude] - 2026-02-15
+### Fixed
+- **Certificate setup validation**: Fixed "Cert file not found" error during DuckDNS automatic certificate generation.
+  - Enhanced PowerShell script to detect alternate domain naming (handles both `example.duckdns.org` and `example` directory formats)
+  - Added Windows symlink resolution for certificate file validation (Certbot creates symlinks in `live/` pointing to `archive/`)
+  - Improved error messages with diagnostic details and troubleshooting hints
+  - Added file size validation to detect empty or corrupted certificates
+  - Enhanced user feedback in setup wizard with clear success/failure indicators
+
 ### Changed
 - **Server architecture**: Split monolithic server into IdP (Identity Provider) and Inventory modules with backward-compatible re-export shims.
 - **Default port**: Changed from 5199 to 443 (HTTPS standard).
