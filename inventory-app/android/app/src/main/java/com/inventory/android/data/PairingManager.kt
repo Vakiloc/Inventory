@@ -24,14 +24,14 @@ class PairingManager(
   private val prefs: Prefs,
   private val webAuthnManager: WebAuthnManager,
   private val identityProvider: suspend () -> DeviceIdentity.Identity = { DeviceIdentity().getOrCreate() },
-  private val apiServiceForBaseUrl: suspend (String) -> ApiService = { baseUrl ->
+  private val apiServiceForBaseUrl: suspend (String, List<String>?) -> ApiService = { baseUrl, _ ->
     val logging = HttpLoggingInterceptor().apply {
       level = HttpLoggingInterceptor.Level.BASIC
     }
     val client = OkHttpClient.Builder()
       .addInterceptor(logging)
       .build()
-      
+
     val gson = GsonBuilder().create()
 
     Retrofit.Builder()
@@ -60,7 +60,7 @@ class PairingManager(
         legacyToken
       } else {
         // WebAuthn Registration Flow
-        val api = apiServiceForBaseUrl(baseUrl)
+        val api = apiServiceForBaseUrl(baseUrl, payload.ips)
         
         // 1. Get Options
         Log.d("InvApp", "Requesting registration options...")

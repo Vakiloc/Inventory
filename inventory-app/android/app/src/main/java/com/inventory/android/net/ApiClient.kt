@@ -29,7 +29,8 @@ class ApiClient(
   private val baseUrlProvider: suspend () -> String?,
   private val tokenProvider: suspend () -> String?,
   private val inventoryIdProvider: suspend () -> String? = { null },
-  private val localeProvider: suspend () -> String? = { null }
+  private val localeProvider: suspend () -> String? = { null },
+  private val lanIps: List<String>? = null
 ) {
   private val gson: Gson = GsonBuilder().create()
 
@@ -116,7 +117,7 @@ class ApiClient(
       if (resolvedIp != null) {
            // Upgrade to sslip.io for WebAuthn + Offline support
            val sslipHost = DiscoveryResolver.getSslipDomain(resolvedIp)
-           
+
            // If the original was .local or IP, we switch to sslip.io
            // If it was already sslip, we keep it.
            if (host != sslipHost) {
@@ -126,6 +127,12 @@ class ApiClient(
 
            // Force local resolution of sslip.io -> IP (Offline support)
            dns = PreResolvedDns(sslipHost, resolvedIp)
+      } else if (!lanIps.isNullOrEmpty() && host != null) {
+           // Use LAN IPs from QR payload for DNS pre-resolution.
+           // This handles custom hostnames (e.g. duckdns.org) that resolve to
+           // a public IP unreachable from the LAN.
+           dns = PreResolvedDns(host, lanIps.first())
+           Log.i("ApiClient", "Using LAN IP for $host: ${lanIps.first()}")
       } else {
            Log.w("ApiClient", "Could not resolve IP for $host. Proceeding with original URL.")
       }

@@ -67,7 +67,7 @@ export function createWebAuthnRouter({ stateDb, cert }) {
     }
 
     try {
-      const rpID = req.hostname;
+      const rpID = process.env.WEBAUTHN_RP_ID || req.hostname;
       const expectedOrigin = req.get('origin') || `http://${req.headers.host}`;
 
       console.log(`[WebAuthn] Verifying registration with rpID=${rpID}, origin=${expectedOrigin}`);

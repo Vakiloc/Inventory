@@ -323,8 +323,8 @@ async function getServerUrl() {
     console.error('getServerUrl: window.inventory is undefined. Use Electron to run this app.');
     // Check if we are running in a browser environment
     if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
-       console.warn('Falling back to localhost:5199 for browser debugging');
-       return 'http://localhost:5199';
+       console.warn('Falling back to localhost:443 for browser debugging');
+       return 'https://localhost:443';
     }
     throw new Error('Electron context bridge not available');
   }

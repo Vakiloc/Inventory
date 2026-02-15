@@ -29,11 +29,12 @@ class PairViewModel(application: Application) : AndroidViewModel(application) {
     private val pairingManager by lazy {
         val context = application.applicationContext
         val prefs = Prefs(context)
-        val apiFactory: suspend (String) -> ApiService = { baseUrl ->
+        val apiFactory: suspend (String, List<String>?) -> ApiService = { baseUrl, lanIps ->
             ApiClient(
                 context = context,
                 baseUrlProvider = { baseUrl },
-                tokenProvider = { null }
+                tokenProvider = { null },
+                lanIps = lanIps
             ).createService()
         }
         PairingManager(prefs, WebAuthnManager(context), apiServiceForBaseUrl = apiFactory)

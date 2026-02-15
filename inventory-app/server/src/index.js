@@ -38,15 +38,17 @@ const app = createApp({
   cert: httpsCertData ? httpsCertData.toString('utf8') : undefined
 });
 
-const port = Number(process.env.PORT || 5199);
+const port = Number(process.env.PORT || 443);
 let server;
+let tlsOptions = null;
 
 if (process.env.HTTPS_PFX_PATH) {
   try {
     const pfx = fs.readFileSync(process.env.HTTPS_PFX_PATH);
     const passphrase = process.env.HTTPS_PASSPHRASE || '';
+    tlsOptions = { pfx, passphrase };
 
-    server = https.createServer({ pfx, passphrase }, app).listen(port, () => {
+    server = https.createServer(tlsOptions, app).listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`inventory-server listening on https://0.0.0.0:${port}`);
     });
@@ -59,7 +61,8 @@ if (process.env.HTTPS_PFX_PATH) {
   }
 } else if (httpsKeyData && httpsCertData) {
   try {
-    server = https.createServer({ key: httpsKeyData, cert: httpsCertData }, app).listen(port, () => {
+    tlsOptions = { key: httpsKeyData, cert: httpsCertData };
+    server = https.createServer(tlsOptions, app).listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`inventory-server listening on https://0.0.0.0:${port}`);
     });
@@ -199,7 +202,7 @@ server.on('error', (err) => {
     // eslint-disable-next-line no-console
     console.error(
       `inventory-server failed to start: port ${port} is already in use. ` +
-        `Set PORT to a free port (example: PORT=5200).`
+        `Set PORT to a free port (example: PORT=8443).`
     );
     process.exit(1);
   }
