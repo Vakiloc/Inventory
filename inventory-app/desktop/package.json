@@ -43,7 +43,7 @@
     "appId": "com.inventory.desktop",
     "productName": "Inventory",
     "artifactName": "inventory_v${version}.${ext}",
-    "electronVersion": "30.0.9",
+    "electronVersion": "40.4.1",
     "directories": {
       "output": "dist-electron"
     },
