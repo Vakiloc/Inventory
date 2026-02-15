@@ -225,6 +225,8 @@ The desktop renderer uses **vanilla JavaScript** with ES modules bundled by Vite
 | `inventory-app/docs/API.md` | REST endpoint reference |
 | `inventory-app/docs/SECURITY.md` | Security model (LAN auth, transport, at-rest) |
 | `inventory-app/docs/ANDROID.md` | Android client guide |
+| `inventory-app/docs/CONTRIBUTING.md` | Development workflow, testing, PR process |
+| `inventory-app/docs/DEPENDABOT.md` | Dependency update strategy and merge criteria |
 | `inventory-app/docs/RELEASING.md` | Release procedures |
 | `inventory-app/docs/MAINTENANCE.md` | Cleanup & re-initialization |
 | `inventory-app/docs/DRIVE_SYNC.md` | Google Drive sync setup |
