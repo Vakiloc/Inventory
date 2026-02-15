@@ -4,14 +4,11 @@ updates:
     directory: "/inventory-app"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "/inventory-app/server"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "/inventory-app/desktop"
-    schedule:
-      interval: "weekly"
+    # Group npm workspace updates to reduce PR count
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
   - package-ecosystem: "gradle"
     directory: "/inventory-app/android"
     schedule:

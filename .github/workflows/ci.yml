@@ -44,6 +44,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Make gradlew executable
+        working-directory: inventory-app/android
+        run: chmod +x gradlew
+
       - name: Unit tests
         working-directory: inventory-app/android
         run: ./gradlew :app:testDebugUnitTest

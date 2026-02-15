@@ -52,6 +52,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Make gradlew executable
+        working-directory: inventory-app/android
+        run: chmod +x gradlew
+
       - name: Unit tests
         working-directory: inventory-app/android
         run: ./gradlew :app:testDebugUnitTest
@@ -142,6 +146,10 @@ jobs:
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > inventory-app/android/release.jks
           echo "ANDROID_KEYSTORE_PATH=$GITHUB_WORKSPACE/inventory-app/android/release.jks" >> "$GITHUB_ENV"
+
+      - name: Make gradlew executable
+        working-directory: inventory-app/android
+        run: chmod +x gradlew
 
       - name: Build APK
         working-directory: inventory-app/android
