@@ -9,7 +9,27 @@
       "Bash(git push:*)",
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(done)",
+      "Bash(gh pr diff:*)",
+      "Bash(while read branch)",
+      "Bash(do echo \"=== $branch ===\")",
+      "Bash(git branch:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr checkout:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(npm install:*)",
+      "Bash(for pr in 5 6 9 11 12 14 15 16 17 18)",
+      "Bash(do)",
+      "Bash(gh pr close:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git revert:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ]
   }
 }
