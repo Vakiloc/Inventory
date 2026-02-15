@@ -103,7 +103,7 @@ export function createApp({ inventoryDbProvider, stateDb, ownerToken, serverSecr
         return appDomainRouter(req, res, next);
       }
 
-      if (!req.hostname.includes(idpHost) && !req.hostname.includes(appHost)) {
+      if (req.hostname !== idpHost && req.hostname !== appHost) {
          return next();
       }
 
