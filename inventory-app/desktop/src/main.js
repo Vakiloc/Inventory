@@ -840,7 +840,30 @@ app.whenReady().then(async () => {
                             fs.unlinkSync(resultFile); // Cleanup
                             
                             if (data.success) {
-                                log('Success! Certificate generated.');
+                                log('Script reported success. Verifying certificate paths...');
+
+                                // Double-check paths exist (catches PowerShell script bugs)
+                                if (!fs.existsSync(data.result.key)) {
+                                    log('ERROR: Key path does not exist: ' + data.result.key);
+                                    resolve({
+                                        success: false,
+                                        message: 'Certificate key file not accessible',
+                                        details: `Expected: ${data.result.key}\n\nThe PowerShell script reported success but the file cannot be found.`
+                                    });
+                                    return;
+                                }
+
+                                if (!fs.existsSync(data.result.cert)) {
+                                    log('ERROR: Cert path does not exist: ' + data.result.cert);
+                                    resolve({
+                                        success: false,
+                                        message: 'Certificate file not accessible',
+                                        details: `Expected: ${data.result.cert}\n\nThe PowerShell script reported success but the file cannot be found.`
+                                    });
+                                    return;
+                                }
+
+                                log('Certificate paths verified.');
                                 resolve({ success: true, result: data.result });
                             } else {
                                 log('Script reported error: ' + data.message);
@@ -868,8 +891,24 @@ app.whenReady().then(async () => {
     ipcMain.handle('setup:validateAndSave', async (e, config) => {
         try {
             if (!config.useSelfSigned) {
-                if (!fs.existsSync(config.httpsKey)) throw new Error('Key file not found');
-                if (!fs.existsSync(config.httpsCert)) throw new Error('Cert file not found');
+                const keyExists = fs.existsSync(config.httpsKey);
+                const certExists = fs.existsSync(config.httpsCert);
+
+                if (!keyExists || !certExists) {
+                    let errorMsg = 'Certificate validation failed:\n\n';
+                    if (!keyExists) errorMsg += `✗ Key not found: ${config.httpsKey}\n`;
+                    if (!certExists) errorMsg += `✗ Cert not found: ${config.httpsCert}\n`;
+                    errorMsg += '\nPlease check the setup wizard output for errors.';
+                    throw new Error(errorMsg);
+                }
+
+                // Verify files are readable and non-empty
+                const keyStats = fs.statSync(config.httpsKey);
+                const certStats = fs.statSync(config.httpsCert);
+
+                if (keyStats.size === 0 || certStats.size === 0) {
+                    throw new Error(`Certificate files are empty. This indicates a generation failure.`);
+                }
             }
             const saveData = config.useSelfSigned ? { hostname: 'localhost' } : {
                 hostname: config.hostname,
