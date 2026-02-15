@@ -2,25 +2,12 @@ import express from 'express';
 import cors from 'cors';
 
 import { resolveLocaleFromRequest } from './i18n/index.js';
+import { installJsonErrorHandler, installSecurityMiddleware } from './http.js';
 
-import {
-  createAuthMiddleware,
-  requireRole,
-  installJsonErrorHandler,
-  installSecurityMiddleware
-} from './http.js';
-
-import { createInventoryMiddleware } from './inventoryMiddleware.js';
-
-import { createCoreRouter } from './routes/core.js';
-import { createCategoriesRouter } from './routes/categories.js';
-import { createLocationsRouter } from './routes/locations.js';
-import { createItemsRouter } from './routes/items.js';
-import { createScansRouter } from './routes/scans.js';
-import { createSyncLogRouter } from './routes/syncLog.js';
-import { createInventoriesRouter } from './routes/inventories.js';
-import { createDevicesRouter } from './routes/devices.js';
-import { createWebAuthnRouter } from './routes/webauthn.js';
+import { createIdp } from './idp/index.js';
+import { requireRole } from './idp/auth.js';
+import { createInventoryRouters } from './inventory/index.js';
+import { createInventoryMiddleware } from './inventory/middleware.js';
 
 export function createApp({ inventoryDbProvider, stateDb, ownerToken, serverSecret, cert }) {
   if (!inventoryDbProvider) throw new Error('createApp: inventoryDbProvider is required');
@@ -58,46 +45,50 @@ export function createApp({ inventoryDbProvider, stateDb, ownerToken, serverSecr
       }
     }]);
   });
-  
+
   app.use((req, res, next) => {
     res.locals.locale = resolveLocaleFromRequest(req);
     next();
   });
 
-  const requireAuth = createAuthMiddleware({ ownerToken, serverSecret, stateDb });
+  // ── Identity Provider (IdP) ──────────────────────────────────────────
+  // Handles: authentication, device pairing, WebAuthn/passkey management.
+  // All state stored in server-state.sqlite.
+  const idp = createIdp({ stateDb, ownerToken, serverSecret, cert });
+
+  // ── Inventory App ────────────────────────────────────────────────────
+  // Handles: item/category/location CRUD, barcode scanning, sync.
+  // Auth middleware is provided by the IdP; data stored in inventory.sqlite.
   const requireEdit = requireRole('editor');
-  const requireOwner = requireRole('owner');
+  const inventoryRouters = createInventoryRouters({
+    inventoryDbProvider,
+    requireAuth: idp.requireAuth,
+    requireEdit
+  });
 
-  const withInventory = createInventoryMiddleware(inventoryDbProvider);
-
+  // ── Route Mounting ───────────────────────────────────────────────────
+  // All route routers are mounted flat on the API router (no extra nesting)
+  // to match Express's routing expectations and avoid issues with
+  // setImmediate in sub-router fallthrough.
   const api = express.Router();
-  api.use(withInventory);
-  api.use(createCoreRouter({ ownerToken, stateDb, requireAuth }));
-  api.use(createInventoriesRouter({ inventoryDbProvider, requireAuth }));
-  api.use(createDevicesRouter({ stateDb, requireAuth, requireOwner }));
-  api.use(createCategoriesRouter({ requireAuth, requireEdit }));
-  api.use(createLocationsRouter({ requireAuth, requireEdit }));
-  api.use(createItemsRouter({ requireAuth, requireEdit }));
-  api.use(createScansRouter({ requireAuth, requireEdit }));
-  api.use(createSyncLogRouter({ requireAuth, requireEdit }));
-
-  const webAuthnRouter = createWebAuthnRouter({ stateDb, cert });
+  api.use(createInventoryMiddleware(inventoryDbProvider));
+  for (const r of idp.apiRouters) api.use(r);
+  for (const r of inventoryRouters) api.use(r);
 
   // Domain Splitting Logic
   const idpHost = process.env.IDP_HOSTNAME;
   const appHost = process.env.APP_HOSTNAME;
 
   if (idpHost || appHost) {
-    // eslint-disable-next-line no-console
     console.log(`[Server] Split Domain Mode Active. IDP=${idpHost}, APP=${appHost}`);
 
     // IDP Router
-    const idpRouter = express.Router();
-    idpRouter.use('/auth/webauthn', webAuthnRouter);
+    const idpDomainRouter = express.Router();
+    idpDomainRouter.use('/auth/webauthn', idp.webAuthnRouter);
 
     // App Router
-    const appRouter = express.Router();
-    appRouter.use('/api', api);
+    const appDomainRouter = express.Router();
+    appDomainRouter.use('/api', api);
 
     app.use((req, res, next) => {
       // Shared Routes (Root CA, AssetLinks)
@@ -106,18 +97,13 @@ export function createApp({ inventoryDbProvider, stateDb, ownerToken, serverSecr
       }
 
       if (req.hostname === idpHost) {
-        return idpRouter(req, res, next);
+        return idpDomainRouter(req, res, next);
       }
       if (req.hostname === appHost) {
-        return appRouter(req, res, next);
+        return appDomainRouter(req, res, next);
       }
 
-      // Check for local IP access (failover for Monolith-style access via IP)
-      // If accessing via IP (not domain), dispatch based on path?
-      // Or block? Let's allow IP access to work as Monolith for debugging/setup.
-      if (!req.hostname.includes(idpHost) && !req.hostname.includes(appHost)) {
-         // Fallback to monolith behavior if accessing via IP or other domain
-         // But warn
+      if (req.hostname !== idpHost && req.hostname !== appHost) {
          return next();
       }
 
@@ -125,12 +111,12 @@ export function createApp({ inventoryDbProvider, stateDb, ownerToken, serverSecr
     });
 
     // Fallback/Monolith attachment (reachable if next() called above)
-    app.use('/auth/webauthn', webAuthnRouter);
+    app.use('/auth/webauthn', idp.webAuthnRouter);
     app.use('/api', api);
 
   } else {
     // Standard Monolith Mode
-    app.use('/auth/webauthn', webAuthnRouter);
+    app.use('/auth/webauthn', idp.webAuthnRouter);
     app.use('/api', api);
   }
 

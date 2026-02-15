@@ -100,7 +100,7 @@ app.on('certificate-error', async (event, webContents, url, error, certificate, 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SERVER_PORT = Number(process.env.INVENTORY_PORT || 5199);
+const SERVER_PORT = Number(process.env.INVENTORY_PORT || 443);
 const SERVER_URL = process.env.INVENTORY_SERVER_URL || `https://localhost:${SERVER_PORT}`;
 
 let serverProc;
@@ -401,7 +401,7 @@ async function startServerIfLocal() {
     sslKey: useCustomCert ? userConfig.httpsKey : undefined,
     rootCaPath: getRootCertPath(),
     androidDebugSha256: process.env.ANDROID_DEBUG_SHA256,
-    webAuthnRpId: ngrokUrl ? new URL(ngrokUrl).hostname : (userConfig.hostname || sslipDomain),
+    webAuthnRpId: ngrokUrl ? new URL(ngrokUrl).hostname : (userConfig.idpHostname || userConfig.hostname || sslipDomain),
     nodeExec,
     execPath: process.execPath
   });
@@ -543,7 +543,7 @@ async function restartLocalServerWithDataDir(dataDir) {
       IDP_HOSTNAME: userConfig.idpHostname,
       APP_HOSTNAME: userConfig.appHostname,
       ANDROID_DEBUG_SHA256: process.env.ANDROID_DEBUG_SHA256, // Pass it down
-      WEBAUTHN_RP_ID: ngrokUrl ? new URL(ngrokUrl).hostname : undefined, // Inject Ngrok Hostname if active
+      WEBAUTHN_RP_ID: ngrokUrl ? new URL(ngrokUrl).hostname : (userConfig.idpHostname || userConfig.hostname || undefined),
       ...(nodeExec === process.execPath ? { ELECTRON_RUN_AS_NODE: '1' } : {})
     },
     cwd: serverRoot,
@@ -797,9 +797,12 @@ app.whenReady().then(async () => {
 
             log(`(A new PowerShell window will open. Please accept the UAC prompt.)`);
             
-            // Construct the arguments for the script
-            // For array param in PowerShell from command line: -Subdomains "val1","val2"
-            const subsArg = subdomains.map(s => `"${s}"`).join(',');
+            // Normalize domains: ensure .duckdns.org suffix before passing to PowerShell
+            // (defends against Start-Process -ArgumentList mangling the array)
+            const normalizedSubs = subdomains.map(s =>
+                s.includes('.duckdns.org') ? s : `${s}.duckdns.org`
+            );
+            const subsArg = normalizedSubs.map(s => `"${s}"`).join(',');
 
             const argsParts = [
                 '-NoProfile',
@@ -1018,17 +1021,27 @@ ipcMain.handle('app:getLanBaseUrl', async () => {
   if (ngrokUrl) {
     return {
        baseUrl: ngrokUrl,
-       ips: [] 
+       ips: []
     };
   }
 
-  // Use the new sslip.io Local PKI domain strategy.
-  // This provides a secure origin (compatible with WebAuthn) that resolves to the local LAN IP.
   const localIp = detectLocalIp();
+  const userConfig = loadUserConfig();
+
+  // When custom certs with a hostname are configured, use that hostname
+  // so the QR code URL matches the certificate's SANs.
+  if (userConfig.hostname && userConfig.httpsKey && userConfig.httpsCert) {
+    return {
+      baseUrl: `https://${userConfig.hostname}:${SERVER_PORT}`,
+      ips: [localIp]
+    };
+  }
+
+  // Default: use sslip.io Local PKI domain strategy.
+  // This provides a secure origin (compatible with WebAuthn) that resolves to the local LAN IP.
   const sslipDomain = getSslipDomain(localIp);
-  
-  // Note: We use HTTPS port 5199 by default now.
-  return { 
+
+  return {
     baseUrl: `https://${sslipDomain}:${SERVER_PORT}`,
     ips: [localIp]
   };

@@ -64,6 +64,13 @@ if (-not $adbExe) {
 
 Write-Host "adb: $adbExe"
 
+# Ensure ANDROID_HOME is set so Gradle can locate the SDK
+if (-not $env:ANDROID_HOME) {
+  $sdkRoot = Split-Path (Split-Path $adbExe -Parent) -Parent
+  $env:ANDROID_HOME = $sdkRoot
+  Write-Host "ANDROID_HOME (auto-detected): $env:ANDROID_HOME"
+}
+
 function Resolve-JavaHome {
   param([string]$Explicit)
 

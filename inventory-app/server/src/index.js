@@ -1,13 +1,18 @@
-import { migrateInventorySchema } from './db.js';
+import { migrateInventorySchema } from './inventory/db.js';
 import { createApp } from './app.js';
-import { openStateDb, getOwnerToken, getServerSecret } from './stateDb.js';
-import { createInventoryDbProvider } from './inventoryDb.js';
+import { openStateDb, getOwnerToken, getServerSecret } from './idp/stateDb.js';
+import { createInventoryDbProvider } from './inventory/inventoryDb.js';
+import { setStateDb } from './idp/webauthnDb.js';
 import https from 'node:https';
 import fs from 'node:fs';
 
 const state = openStateDb();
 const ownerToken = getOwnerToken(state.db);
 const serverSecret = getServerSecret(state.db);
+
+// Initialize WebAuthn DB with the stateDb handle so credentials are
+// stored in server-state.sqlite (the IdP database).
+setStateDb(state.db);
 
 const inventoryDbProvider = createInventoryDbProvider({ migrateInventorySchema });
 
@@ -33,15 +38,17 @@ const app = createApp({
   cert: httpsCertData ? httpsCertData.toString('utf8') : undefined
 });
 
-const port = Number(process.env.PORT || 5199);
+const port = Number(process.env.PORT || 443);
 let server;
+let tlsOptions = null;
 
 if (process.env.HTTPS_PFX_PATH) {
   try {
     const pfx = fs.readFileSync(process.env.HTTPS_PFX_PATH);
     const passphrase = process.env.HTTPS_PASSPHRASE || '';
-    
-    server = https.createServer({ pfx, passphrase }, app).listen(port, () => {
+    tlsOptions = { pfx, passphrase };
+
+    server = https.createServer(tlsOptions, app).listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`inventory-server listening on https://0.0.0.0:${port}`);
     });
@@ -54,7 +61,8 @@ if (process.env.HTTPS_PFX_PATH) {
   }
 } else if (httpsKeyData && httpsCertData) {
   try {
-    server = https.createServer({ key: httpsKeyData, cert: httpsCertData }, app).listen(port, () => {
+    tlsOptions = { key: httpsKeyData, cert: httpsCertData };
+    server = https.createServer(tlsOptions, app).listen(port, () => {
       // eslint-disable-next-line no-console
       console.log(`inventory-server listening on https://0.0.0.0:${port}`);
     });
@@ -167,12 +175,6 @@ async function shutdown(reason) {
   }
 
   try {
-    legacyDb.db.close();
-  } catch {
-    // ignore
-  }
-
-  try {
     state.db.close();
   } catch {
     // ignore
@@ -200,7 +202,7 @@ server.on('error', (err) => {
     // eslint-disable-next-line no-console
     console.error(
       `inventory-server failed to start: port ${port} is already in use. ` +
-        `Set PORT to a free port (example: PORT=5200).`
+        `Set PORT to a free port (example: PORT=8443).`
     );
     process.exit(1);
   }

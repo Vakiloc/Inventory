@@ -75,5 +75,8 @@ coverage/
 # Vim/Editor
 .swp
 
+# Claude -cwd
+**/tmpclaude-*-cwd
+
 # Vite
 .vite/

@@ -39,8 +39,7 @@ The app handles secure local networking automatically using a custom **Local PKI
 From `inventory-app/`:
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + $env:Path
-cd "c:\Users\vakil\OneDrive\Documentos\scripts\InvenTory\ChatGPT\inventory-app"
+cd inventory-app
 npm install
 ```
 
@@ -49,8 +48,7 @@ npm install
 ### Option A (recommended): Run the desktop app (it auto-starts the server)
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + $env:Path
-cd "c:\Users\vakil\OneDrive\Documentos\scripts\InvenTory\ChatGPT\inventory-app"
+cd inventory-app
 npm run dev:desktop
 ```
 
@@ -64,8 +62,7 @@ npm run dev:desktop
 ### Option B: Run the server only
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + $env:Path
-cd "c:\Users\vakil\OneDrive\Documentos\scripts\InvenTory\ChatGPT\inventory-app"
+cd inventory-app
 npm run dev -w server
 ```
 
@@ -153,8 +150,7 @@ or set:
 Then:
 
 ```powershell
-$env:Path = "C:\Program Files\nodejs;" + $env:Path
-cd "c:\Users\vakil\OneDrive\Documentos\scripts\InvenTory\ChatGPT\inventory-app"
+cd inventory-app
 # Upload local snapshot to Drive
 npm run drive:push -w server
 # Download snapshot from Drive and merge into local DB

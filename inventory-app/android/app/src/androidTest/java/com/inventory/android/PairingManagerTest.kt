@@ -57,7 +57,7 @@ class PairingManagerTest {
       prefs = prefs,
       webAuthnManager = mockWebAuthn,
       identityProvider = { DeviceIdentity.Identity(deviceId = "dev", publicKeyBase64 = "pk") },
-      apiServiceForBaseUrl = {
+      apiServiceForBaseUrl = { _, _ ->
         object : ApiService {
            // Mock registration flow
            override suspend fun registerOptions(req: WebAuthnRegistrationOptionsRequest): com.google.gson.JsonObject {
@@ -109,7 +109,7 @@ class PairingManagerTest {
       prefs = prefs,
       webAuthnManager = mockWebAuthn,
       identityProvider = { DeviceIdentity.Identity(deviceId = "dev", publicKeyBase64 = "pk") },
-      apiServiceForBaseUrl = {
+      apiServiceForBaseUrl = { _, _ ->
         object : ApiService {
            override suspend fun registerOptions(req: WebAuthnRegistrationOptionsRequest) = 
              com.google.gson.JsonParser.parseString("{}").asJsonObject

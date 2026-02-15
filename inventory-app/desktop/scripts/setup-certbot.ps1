@@ -75,15 +75,17 @@ try {
         throw "Email is required."
     }
 
-    # Clean domain inputs
+    # Clean domain inputs - handle both array and comma-separated string
+    # Start-Process -ArgumentList can mangle "val1","val2" into a single "val1,val2"
     $targets = @()
     foreach ($sub in $Subdomains) {
-        if (-not [string]::IsNullOrWhiteSpace($sub)) {
-            $clean = $sub.Trim()
-            if (-not $clean.EndsWith(".duckdns.org")) {
-                $clean = "$clean.duckdns.org"
+        if ([string]::IsNullOrWhiteSpace($sub)) { continue }
+        $parts = $sub.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+        foreach ($part in $parts) {
+            if (-not $part.EndsWith(".duckdns.org")) {
+                $part = "$part.duckdns.org"
             }
-            $targets += $clean
+            $targets += $part
         }
     }
     
@@ -133,6 +135,7 @@ try {
         "certonly",
         "--non-interactive",
         "--agree-tos",
+        "--expand",
         "--email", $Email,
         "--authenticator", "dns-duckdns",
         "--dns-duckdns-credentials", $CredFile,

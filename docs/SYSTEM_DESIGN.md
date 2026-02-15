@@ -16,6 +16,15 @@ This document serves as a comprehensive technical specification for the Inventor
     *   **LAN**: Direct HTTPS communication between Device and Host.
     *   **Cloud (Optional)**: Google Drive file-based sync for sharing the SQLite database file between Desktop instances.
 
+### Server Module Architecture
+
+The server code is organized into two modules:
+
+*   **IdP (Identity Provider)** (`server/src/idp/`): Handles authentication, device pairing, WebAuthn/passkey management, and device lifecycle. State is stored in `server-state.sqlite`.
+*   **Inventory** (`server/src/inventory/`): Handles item/category/location CRUD, barcode scanning, sync, and export/import. Data is stored in per-inventory `inventory.sqlite` files.
+
+Both modules run in the same Express process. The IdP provides auth middleware consumed by the Inventory module. An optional **split-domain mode** (`IDP_HOSTNAME` / `APP_HOSTNAME` env vars) routes WebAuthn requests to the IdP hostname and API requests to the app hostname.
+
 ## 2. Data Persistence Layer
 
 The system uses **SQLite** (`better-sqlite3`) and maintains two distinct database files to separate business data from configuration.
@@ -98,7 +107,7 @@ CREATE TABLE item_barcodes (
 );
 ```
 
-**5. Sync & Security**
+**5. Sync Log**
 ```sql
 CREATE TABLE sync_log (
   id INTEGER PRIMARY KEY,
@@ -106,33 +115,13 @@ CREATE TABLE sync_log (
   source TEXT NOT NULL, -- e.g. 'drive_push', 'drive_pull'
   details TEXT
 );
-
-CREATE TABLE webauthn_credentials (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  credential_id TEXT NOT NULL UNIQUE,
-  user_id INTEGER NOT NULL,
-  public_key TEXT NOT NULL,
-  sign_count INTEGER,
-  aaguid TEXT,
-  transports TEXT,
-  friendly_name TEXT,
-  created_at INTEGER, 
-  last_used_at INTEGER,
-  revoked_at INTEGER
-);
-
-CREATE TABLE challenge_transactions (
-  tx_id INTEGER PRIMARY KEY AUTOINCREMENT,
-  type TEXT NOT NULL,
-  challenge TEXT NOT NULL,
-  session_binding TEXT,
-  ...
-);
 ```
 
+> **Note**: WebAuthn credentials and challenge transactions are stored in `server-state.sqlite` (see Section 2B), not in the inventory database.
+
 ### B. Server State Database (`server-state.sqlite`)
-*   **Purpose**: Stores device pairing, authentication secrets, and global settings.
-*   **Path**: `data/server-state.sqlite`
+*   **Purpose**: Stores device pairing, authentication secrets, global settings, WebAuthn credentials, and challenge transactions. Managed by the IdP module.
+*   **Path**: `data/server-state.sqlite` (Electron: `userData/`)
 
 #### Schema Definitions
 
@@ -150,7 +139,7 @@ CREATE TABLE devices (
 
 CREATE TABLE pairing_codes (
   code TEXT PRIMARY KEY,
-  status TEXT DEFAULT 'created', -- 'created', 'scanned', 'consumed'
+  status TEXT DEFAULT 'created', -- 'created', 'scanned', 'authenticated', 'consumed', 'cancelled'
   expires_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL,
   consumed_at INTEGER
@@ -164,6 +153,34 @@ CREATE TABLE server_meta (
   value TEXT NOT NULL
 );
 -- Keys: 'server_secret', 'owner_token'
+```
+
+**3. WebAuthn Credentials**
+```sql
+CREATE TABLE webauthn_credentials (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  credential_id TEXT NOT NULL UNIQUE,
+  user_id INTEGER NOT NULL,
+  public_key TEXT NOT NULL,
+  sign_count INTEGER,
+  aaguid TEXT,
+  transports TEXT,
+  friendly_name TEXT,
+  created_at INTEGER DEFAULT (strftime('%s','now')),
+  last_used_at INTEGER,
+  revoked_at INTEGER
+);
+
+CREATE TABLE challenge_transactions (
+  tx_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,
+  challenge TEXT NOT NULL,
+  user_id INTEGER,
+  issued_at INTEGER DEFAULT (strftime('%s','now')),
+  expires_at INTEGER,
+  used_at INTEGER,
+  session_binding TEXT
+);
 ```
 
 ## 3. Frontend & Desktop Architecture
@@ -239,7 +256,7 @@ When `POST /scan` is called by an Android client:
 
 ### C. Device Pairing Flow (Secure Bootstrap)
 1.  **Start**: Desktop User requests pairing. Server generates `pairing_code` (TTL: 2 min).
-2.  **Display**: Desktop shows QR Code with `https://<ip>:<port>#<code>`.
+2.  **Display**: Desktop shows QR Code with `{ baseUrl, code, ips }` where `ips` contains LAN IPv4 addresses for custom hostname resolution.
 3.  **Scan**: Android Device scans QR.
     *   Android accepts the Self-Signed Certificate because it was physically scanned (Trust On First Use).
 4.  **Verify**: Android calls `POST /registration/verify` with `code`.
@@ -265,17 +282,37 @@ Since WebAuthn and Secure Contexts (camera access) require HTTPS:
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
+| **GET** | `/api/ping` | Health check (unauthenticated). |
+| **GET** | `/api/meta` | Server metadata (auth required). |
+| **GET** | `/api/admin/token` | Get owner token (localhost only). |
+| **GET** | `/api/admin/pair-code` | Generate pairing code (localhost only). |
+| **GET** | `/api/admin/pair-code/:code/status` | Poll pairing code status (localhost only). |
+| **POST** | `/api/pair/exchange` | Exchange pairing code for device token. |
 | **GET** | `/api/items` | List items (supports `since` cursor for sync). |
+| **GET** | `/api/items/:id` | Get single item. |
+| **POST** | `/api/items` | Create item. |
 | **PUT** | `/api/items/:id` | Update item (LWW protected). |
+| **DELETE** | `/api/items/:id` | Soft-delete item. |
 | **GET** | `/api/categories` | List all categories. |
-| **POST/PUT**| `/api/categories` | Create or Update category. |
+| **POST/PUT** | `/api/categories` | Create or Update category. |
+| **DELETE** | `/api/categories/:id` | Delete category. |
 | **GET** | `/api/locations` | List all locations. |
-| **POST/PUT**| `/api/locations` | Create or Update location. |
-| **POST** | `/api/scan` | Apply scan event (Idempotent). |
-| **POST** | `/api/scan/resolve` | Check if barcode exists without modifying. |
+| **POST/PUT** | `/api/locations` | Create or Update location. |
+| **DELETE** | `/api/locations/:id` | Delete location. |
+| **POST** | `/api/scan` | Apply scan event (idempotent). |
 | **POST** | `/api/scans/apply` | **(Batch)** Apply multiple offline scan events. |
+| **GET** | `/api/items/:id/barcodes` | List alternate barcodes for item. |
+| **POST** | `/api/items/:id/barcodes` | Add alternate barcode to item. |
+| **POST** | `/api/sync` | Composite sync (push items + pull changes). |
+| **GET** | `/api/export` | Dump full inventory as JSON. |
+| **POST** | `/api/import` | Import inventory from JSON. |
+| **GET** | `/api/sync-log` | View sync history. |
+| **GET** | `/api/item-barcodes` | Incremental barcode sync (supports `since`). |
+| **GET** | `/api/inventories` | List available inventories (multi-inventory). |
 | **GET** | `/api/devices` | Admin: List paired devices. |
 | **POST** | `/api/devices/:id/revoke` | Admin: Revoke device access. |
-| **POST** | `/auth/webauthn/registration/options`| Begin WebAuthn registration. |
-| **POST** | `/auth/webauthn/registration/verify` | Complete pairing / registration. |
-| **GET** | `/api/export` | **(Internal)** Dump DB JSON for Drive Sync. |
+| **POST** | `/auth/webauthn/registration/options` | Begin WebAuthn registration. |
+| **POST** | `/auth/webauthn/registration/verify` | Complete WebAuthn registration. |
+| **POST** | `/auth/webauthn/registration/cancel` | Cancel WebAuthn registration. |
+| **POST** | `/auth/webauthn/authentication/options` | Begin WebAuthn authentication. |
+| **POST** | `/auth/webauthn/authentication/verify` | Complete WebAuthn authentication. |

@@ -69,18 +69,18 @@ export function configureServerEnv({
 }) {
   return {
     ...processEnv,
-    NODE_ENV: isPackaged ? 'production' : (processEnv.NODE_ENV || undefined),
+    NODE_ENV: isPackaged ? 'production' : (processEnv.NODE_ENV || ''),
     PORT: String(serverPort),
     INVENTORY_DATA_DIR: dataDir,
     INVENTORY_REGISTRY_PATH: registryPath,
     INVENTORY_SERVER_STATE_DIR: serverStateDir,
-    HTTPS_PFX_PATH: pfxPath,
+    HTTPS_PFX_PATH: pfxPath || '',
     HTTPS_PASSPHRASE: pfxPass || '',
-    HTTPS_CERT_PATH: sslCert,
-    HTTPS_KEY_PATH: sslKey,
-    INVENTORY_ROOT_CA_PATH: rootCaPath,
-    ANDROID_DEBUG_SHA256: androidDebugSha256,
-    WEBAUTHN_RP_ID: webAuthnRpId,
+    HTTPS_CERT_PATH: sslCert || '',
+    HTTPS_KEY_PATH: sslKey || '',
+    INVENTORY_ROOT_CA_PATH: rootCaPath || '',
+    ANDROID_DEBUG_SHA256: androidDebugSha256 || '',
+    WEBAUTHN_RP_ID: webAuthnRpId || '',
     ...(nodeExec === execPath ? { ELECTRON_RUN_AS_NODE: '1' } : {})
   };
 }

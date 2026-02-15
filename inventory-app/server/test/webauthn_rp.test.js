@@ -18,8 +18,8 @@ const mocks = vi.hoisted(() => ({
   }
 }));
 
-vi.mock('../src/webauthn/index.js', () => mocks.webAuthn);
-vi.mock('../src/stateDb.js', () => mocks.stateDb);
+vi.mock('../src/idp/webauthn.js', () => mocks.webAuthn);
+vi.mock('../src/idp/stateDb.js', () => mocks.stateDb);
 
 describe('WebAuthn Router RP ID Handling', () => {
     let app;

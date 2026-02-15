@@ -137,6 +137,8 @@
   "dialog.pair.expiredAt": "Caducado ({at})",
   "dialog.pair.inSecondsAt": "En {sec}s ({at})",
   "dialog.pair.paired": "Emparejado",
+  "dialog.pair.scanned": "El dispositivo escaneó el código... Autenticando",
+  "dialog.pair.cancelled": "El dispositivo canceló el emparejamiento",
 
   "errors.pairCodeGenerationFailed": "No se pudo generar el código de emparejamiento",
 
