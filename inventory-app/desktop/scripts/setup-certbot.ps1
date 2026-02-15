@@ -217,8 +217,24 @@ try {
         throw "Certificate not found: $CertPath"
     }
 
-    $keySize = (Get-Item $KeyPath).Length
-    $certSize = (Get-Item $CertPath).Length
+    # Get file sizes (resolve symlinks on Windows)
+    $keyItem = Get-Item $KeyPath
+    $certItem = Get-Item $CertPath
+
+    # If the file is a symlink, resolve it to get the actual file size
+    if ($keyItem.LinkType -eq 'SymbolicLink' -and $keyItem.Target) {
+        $keyTargetPath = Join-Path (Split-Path $KeyPath) $keyItem.Target[0]
+        $keySize = (Get-Item $keyTargetPath).Length
+    } else {
+        $keySize = $keyItem.Length
+    }
+
+    if ($certItem.LinkType -eq 'SymbolicLink' -and $certItem.Target) {
+        $certTargetPath = Join-Path (Split-Path $CertPath) $certItem.Target[0]
+        $certSize = (Get-Item $certTargetPath).Length
+    } else {
+        $certSize = $certItem.Length
+    }
 
     if ($keySize -eq 0) {
         throw "Private key file is empty: $KeyPath"
