@@ -104,6 +104,8 @@
   "filters.category.all": "All categories",
   "filters.location.all": "All locations",
 
+  "items.empty.heading.noItems": "No items yet",
+  "items.empty.heading.noMatch": "No results found",
   "items.empty.noItemsYetCanEdit": "No items yet. Add an item or scan a barcode.",
   "items.empty.noItemsYetReadOnly": "No items yet.",
   "items.empty.noMatch": "No matching items. Clear search or filters to see more.",
@@ -132,6 +134,7 @@
   "dialog.item.addTitle": "Add Item",
 
   "item.altBarcodes.none": "(none)",
+  "item.altBarcodes.remove": "Remove",
   "item.altBarcodes.errorLoading": "(error loading)",
 
   "dialog.pair.expiredAt": "Expired ({at})",
@@ -142,6 +145,13 @@
 
   "errors.pairCodeGenerationFailed": "Failed to generate pairing code",
 
+  "status.barcodeAdded": "Barcode added",
+  "status.barcodeInUse": "Barcode already used by item #{id}",
+  "status.addBarcodeError": "Add barcode error: {error}",
+  "status.barcodeRemoved": "Barcode removed",
+  "status.barcodeRemoveError": "Remove barcode error: {error}",
+  "validation.nameRequired": "Name is required",
+
   "status.readOnly": "Read-only mode",
   "status.scanCancelled": "Scan cancelled",
   "status.scanned": "Scanned: {name}",
@@ -151,5 +161,31 @@
   "status.scanError": "Scan error: {error}",
 
   "errors.validation_failed": "Validation failed",
-  "errors.unknown": "Something went wrong."
+  "errors.unknown": "Something went wrong.",
+
+  "accessibility.skipToContent": "Skip to content",
+  "accessibility.sidebar": "Filters and settings",
+  "accessibility.mainContent": "Item inventory",
+  "accessibility.searchItems": "Search items by name, barcode, or serial number",
+  "accessibility.inventoryTable": "Inventory items",
+  "accessibility.warningColumn": "Warning status",
+  "accessibility.actionsColumn": "Actions",
+  "accessibility.incrementQty": "Increase quantity for {name}",
+  "accessibility.decrementQty": "Decrease quantity for {name}",
+  "accessibility.editItem": "Edit {name}",
+  "accessibility.deleteItem": "Delete {name}",
+  "accessibility.toggleSidebar": "Toggle sidebar",
+  "accessibility.corruptedBarcode": "Corrupted barcode warning",
+  "accessibility.clearFilters": "Clear filters",
+
+  "conflict.title": "Save Conflict",
+  "conflict.hint": "Another device updated this item since you last loaded it. Choose which version to keep.",
+  "conflict.yours": "Your version",
+  "conflict.server": "Server version",
+  "conflict.keepMine": "Keep mine",
+  "conflict.keepServer": "Keep server",
+  "conflict.cancel": "Cancel",
+  "conflict.resolved.keepMine": "Conflict resolved: kept your version",
+  "conflict.resolved.keepServer": "Conflict resolved: kept server version",
+  "conflict.resolved.error": "Conflict resolution failed: {error}"
 }

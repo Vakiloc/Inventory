@@ -7,21 +7,23 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <a href="#main-content" class="skip-link" data-i18n="accessibility.skipToContent">Skip to content</a>
+
     <!-- QR Zoom Dialog -->
-    <dialog id="qrZoomDialog" class="modal">
+    <dialog id="qrZoomDialog" class="modal" aria-label="QR Code zoom">
       <div class="modal-content zoom-content">
         <h3 data-i18n="dialog.pair.zoom">Scan QR Code</h3>
-        <img id="pairQrZoom" class="qr-zoom" src="" />
+        <img id="pairQrZoom" class="qr-zoom" src="" alt="Enlarged pairing QR code" />
         <div class="actions">
           <button id="closeQrZoom" class="btn" data-i18n="dialog.close">Close</button>
         </div>
       </div>
     </dialog>
 
-    <header class="topbar">
+    <header class="topbar" role="banner">
       <div class="brand" data-i18n="app.title">Household Inventory</div>
       <div class="grow"></div>
-      <input id="search" class="search" data-i18n-placeholder="topbar.search.placeholder" placeholder="Search name / barcode / serial" />
+      <input id="search" class="search" role="searchbox" aria-label="Search items by name, barcode, or serial number" data-i18n-placeholder="topbar.search.placeholder" placeholder="Search name / barcode / serial" />
       <select id="localeSelect" class="select" style="width: 140px;">
         <option value="en" data-i18n="topbar.locale.en">English</option>
         <option value="es" data-i18n="topbar.locale.es">Spanish</option>
@@ -33,7 +35,8 @@
     </header>
 
     <div class="layout">
-      <aside class="sidebar">
+      <aside class="sidebar" id="sidebar" role="complementary" aria-label="Filters and settings">
+        <button id="sidebarToggle" class="btn sidebar-toggle" aria-label="Toggle sidebar" data-i18n-attr="aria-label:accessibility.toggleSidebar">&#x276E;</button>
         <div class="section">
           <div class="section-title" data-i18n="sidebar.inventory.title">Inventory</div>
           <select id="inventorySelect" class="select"></select>
@@ -91,32 +94,34 @@
           <button id="webcamScan" class="btn" data-i18n="sidebar.scan.webcam" style="margin-top:10px; width:100%;">Webcam scan</button>
         </div>
 
-        <div class="section">
-          <div class="section-title" data-i18n="sidebar.status.title">Status</div>
-          <div id="status" class="status" data-i18n="sidebar.status.starting">Starting…</div>
-        </div>
       </aside>
 
-      <main class="main">
-        <table class="table">
+      <main class="main" id="main-content" role="main" aria-label="Item inventory">
+        <div class="filter-bar" id="filterBar">
+          <select id="mainCategoryFilter" class="select filter-select" aria-label="Filter by category"></select>
+          <select id="mainLocationFilter" class="select filter-select" aria-label="Filter by location"></select>
+          <button id="clearFilters" class="btn filter-clear" data-i18n="accessibility.clearFilters">Clear filters</button>
+        </div>
+        <table class="table" aria-label="Inventory items">
           <thead>
             <tr>
-              <th></th>
-              <th data-i18n="table.name">Name</th>
-              <th data-i18n="table.qty">Qty</th>
-              <th data-i18n="table.category">Category</th>
-              <th data-i18n="table.location">Location</th>
-              <th data-i18n="table.barcode">Barcode</th>
-              <th data-i18n="table.updated">Updated</th>
-              <th></th>
+              <th scope="col" aria-label="Warning status"></th>
+              <th scope="col" data-i18n="table.name">Name</th>
+              <th scope="col" data-i18n="table.qty">Qty</th>
+              <th scope="col" data-i18n="table.category">Category</th>
+              <th scope="col" data-i18n="table.location">Location</th>
+              <th scope="col" data-i18n="table.barcode">Barcode</th>
+              <th scope="col" data-i18n="table.updated">Updated</th>
+              <th scope="col" aria-label="Actions"></th>
             </tr>
           </thead>
-          <tbody id="items"></tbody>
+          <tbody id="items" aria-live="polite" aria-relevant="additions removals"></tbody>
         </table>
+        <div id="status" class="status-bar" role="status" aria-live="polite" aria-atomic="true" data-i18n="sidebar.status.starting">Starting… <span id="pendingBadge" class="pending-badge" style="display:none"></span></div>
       </main>
     </div>
 
-    <dialog id="itemDialog" class="dialog">
+    <dialog id="itemDialog" class="dialog" aria-labelledby="dialogTitle">
       <form id="itemForm" class="form">
         <div class="form-title" id="dialogTitle" data-i18n="dialog.item.title">Item</div>
         <input type="hidden" id="itemId" />
@@ -247,15 +252,32 @@
       </form>
     </dialog>
 
-    <script type="module" src="app.js"></script>
-      
-      
-          
+    <dialog id="conflictDialog" class="dialog" aria-labelledby="conflictTitle">
+      <form method="dialog" class="form">
+        <div class="form-title" id="conflictTitle" data-i18n="conflict.title">Save Conflict</div>
+        <div class="hint" id="conflictHint" data-i18n="conflict.hint">Another device updated this item. Choose which version to keep.</div>
 
+        <div class="grid2">
+          <div>
+            <div class="label" data-i18n="conflict.yours">Your version</div>
+            <div id="conflictLocal" class="conflict-diff"></div>
+          </div>
+          <div>
+            <div class="label" data-i18n="conflict.server">Server version</div>
+            <div id="conflictServer" class="conflict-diff"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="conflictKeepMine" class="btn primary" data-i18n="conflict.keepMine" type="button">Keep mine</button>
+          <button id="conflictKeepServer" class="btn" data-i18n="conflict.keepServer" type="button">Keep server</button>
+          <div class="grow"></div>
+          <button class="btn" data-i18n="conflict.cancel" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="app.js"></script>
   </body>
 </html>
-
-
-
-
 

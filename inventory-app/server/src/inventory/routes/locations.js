@@ -30,7 +30,14 @@ export function createLocationsRouter({ requireAuth, requireEdit }) {
     wrapRoute((req, res) => {
       const data = parseJsonBody(LocationSchema, req, res);
       if (!data) return;
-      sendOk(res, { location: createLocation(req.db, data) });
+      try {
+        sendOk(res, { location: createLocation(req.db, data) });
+      } catch (err) {
+        if (String(err?.message || err).includes('UNIQUE')) {
+          return sendError(res, 409, 'Location name already exists');
+        }
+        throw err;
+      }
     })
   );
 

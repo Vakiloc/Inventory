@@ -75,7 +75,7 @@ coverage/
 # Vim/Editor
 .swp
 
-# Claude -cwd
+# Claude code temporary files (these tmpclaude-*-cwd files are a bug in the current version of Claude)
 **/tmpclaude-*-cwd
 
 # Vite

@@ -104,6 +104,8 @@
   "filters.category.all": "Todas las categorías",
   "filters.location.all": "Todas las ubicaciones",
 
+  "items.empty.heading.noItems": "Aún no hay artículos",
+  "items.empty.heading.noMatch": "Sin resultados",
   "items.empty.noItemsYetCanEdit": "Aún no hay artículos. Añada uno o escanee un código de barras.",
   "items.empty.noItemsYetReadOnly": "Aún no hay artículos.",
   "items.empty.noMatch": "No hay artículos que coincidan. Limpie la búsqueda o los filtros para ver más.",
@@ -132,6 +134,7 @@
   "dialog.item.addTitle": "Añadir artículo",
 
   "item.altBarcodes.none": "(ninguno)",
+  "item.altBarcodes.remove": "Quitar",
   "item.altBarcodes.errorLoading": "(error al cargar)",
 
   "dialog.pair.expiredAt": "Caducado ({at})",
@@ -142,6 +145,13 @@
 
   "errors.pairCodeGenerationFailed": "No se pudo generar el código de emparejamiento",
 
+  "status.barcodeAdded": "Código de barras añadido",
+  "status.barcodeInUse": "Código de barras ya utilizado por el artículo #{id}",
+  "status.addBarcodeError": "Error al añadir código de barras: {error}",
+  "status.barcodeRemoved": "Código de barras eliminado",
+  "status.barcodeRemoveError": "Error al eliminar código de barras: {error}",
+  "validation.nameRequired": "El nombre es obligatorio",
+
   "status.readOnly": "Modo solo lectura",
   "status.scanCancelled": "Escaneo cancelado",
   "status.scanned": "Escaneado: {name}",
@@ -151,5 +161,31 @@
   "status.scanError": "Error de escaneo: {error}",
 
   "errors.validation_failed": "La validación falló",
-  "errors.unknown": "Algo salió mal."
+  "errors.unknown": "Algo salió mal.",
+
+  "accessibility.skipToContent": "Saltar al contenido",
+  "accessibility.sidebar": "Filtros y configuración",
+  "accessibility.mainContent": "Inventario de artículos",
+  "accessibility.searchItems": "Buscar artículos por nombre, código de barras o número de serie",
+  "accessibility.inventoryTable": "Artículos del inventario",
+  "accessibility.warningColumn": "Estado de advertencia",
+  "accessibility.actionsColumn": "Acciones",
+  "accessibility.incrementQty": "Aumentar cantidad de {name}",
+  "accessibility.decrementQty": "Disminuir cantidad de {name}",
+  "accessibility.editItem": "Editar {name}",
+  "accessibility.deleteItem": "Eliminar {name}",
+  "accessibility.toggleSidebar": "Alternar barra lateral",
+  "accessibility.corruptedBarcode": "Advertencia de código de barras dañado",
+  "accessibility.clearFilters": "Limpiar filtros",
+
+  "conflict.title": "Conflicto al guardar",
+  "conflict.hint": "Otro dispositivo actualizó este artículo desde la última vez que lo cargó. Elija qué versión conservar.",
+  "conflict.yours": "Su versión",
+  "conflict.server": "Versión del servidor",
+  "conflict.keepMine": "Conservar la mía",
+  "conflict.keepServer": "Conservar la del servidor",
+  "conflict.cancel": "Cancelar",
+  "conflict.resolved.keepMine": "Conflicto resuelto: se conservó su versión",
+  "conflict.resolved.keepServer": "Conflicto resuelto: se conservó la versión del servidor",
+  "conflict.resolved.error": "Error al resolver el conflicto: {error}"
 }

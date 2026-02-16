@@ -8,10 +8,27 @@ import { createInventoryDbProvider } from '../src/inventory/inventoryDb.js';
 import { getOwnerToken, getServerSecret, openStateDb } from '../src/idp/stateDb.js';
 import { setStateDb } from '../src/idp/webauthnDb.js';
 
-export function createTestContext() {
+export function createTestContext({ registryInventories } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'inventory-server-test-'));
-  const prior = process.env.INVENTORY_DATA_DIR;
+  const priorDataDir = process.env.INVENTORY_DATA_DIR;
+  const priorRegPath = process.env.INVENTORY_REGISTRY_PATH;
   process.env.INVENTORY_DATA_DIR = dir;
+
+  if (registryInventories) {
+    const registry = {
+      activeId: registryInventories[0].id,
+      inventories: registryInventories.map(inv => ({
+        id: inv.id,
+        name: inv.name || inv.id,
+        dataDir: path.join(dir, inv.id)
+      }))
+    };
+    const regPath = path.join(dir, 'inventories.json');
+    fs.writeFileSync(regPath, JSON.stringify(registry));
+    process.env.INVENTORY_REGISTRY_PATH = regPath;
+  } else {
+    delete process.env.INVENTORY_REGISTRY_PATH;
+  }
 
   const state = openStateDb();
   const ownerToken = getOwnerToken(state.db);
@@ -21,7 +38,8 @@ export function createTestContext() {
   setStateDb(state.db);
 
   const inventoryDbProvider = createInventoryDbProvider({ migrateInventorySchema });
-  const { db, dbPath } = inventoryDbProvider.getDbForInventory('default');
+  const defaultInvId = registryInventories ? registryInventories[0].id : 'default';
+  const { db, dbPath } = inventoryDbProvider.getDbForInventory(defaultInvId);
 
   const app = createApp({
     inventoryDbProvider,
@@ -65,8 +83,11 @@ export function createTestContext() {
     } catch {
       // ignore
     }
-    if (prior === undefined) delete process.env.INVENTORY_DATA_DIR;
-    else process.env.INVENTORY_DATA_DIR = prior;
+    if (priorDataDir === undefined) delete process.env.INVENTORY_DATA_DIR;
+    else process.env.INVENTORY_DATA_DIR = priorDataDir;
+
+    if (priorRegPath === undefined) delete process.env.INVENTORY_REGISTRY_PATH;
+    else process.env.INVENTORY_REGISTRY_PATH = priorRegPath;
 
     try {
       fs.rmSync(dir, { recursive: true, force: true });

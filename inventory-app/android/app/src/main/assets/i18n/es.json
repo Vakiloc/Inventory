@@ -36,6 +36,13 @@
   "item.detail.barcodeCorrupted": "Código de barras: (dañado/ilegible)",
   "item.detail.serial": "N.º de serie: {serial}",
 
+  "item.delete.title": "Eliminar artículo",
+  "item.delete.confirm": "¿Está seguro de que desea eliminar \"{name}\"?",
+  "item.delete.success": "Eliminado: {name}",
+  "item.delete.failed": "Error al eliminar: {error}",
+
+  "common.delete": "Eliminar",
+
   "scan.start": "Escanear",
   "scan.stop": "Detener",
   "scan.override": "Anular escaneo (elegir artículo o crear uno nuevo)",
@@ -74,6 +81,8 @@
   "home.notSyncedYet": "Aún no se ha sincronizado",
   "home.search": "Buscar",
   "home.items.title": "Artículos",
+  "home.items.empty.heading.noItems": "Aún no hay artículos",
+  "home.items.empty.heading.noMatch": "Sin resultados",
   "home.items.empty.noMatch": "No hay artículos que coincidan. Limpie la búsqueda o los filtros para ver más.",
   "home.items.empty.none": "Aún no hay artículos. Añada uno o escanee un código de barras.",
   "home.scan.title": "Escanear",
@@ -152,5 +161,24 @@
   "dialog.selectItem.createNew": "Crear artículo nuevo",
 
   "categories.new": "Nueva categoría",
-  "locations.new": "Nueva ubicación"
+  "locations.new": "Nueva ubicación",
+
+  "accessibility.incrementQty": "Aumentar cantidad de {name}",
+  "accessibility.decrementQty": "Disminuir cantidad de {name}",
+  "accessibility.itemCard": "{name}, cantidad {qty}",
+  "accessibility.syncConnected": "Conectado al escritorio",
+  "accessibility.syncOffline": "Modo sin conexión",
+  "accessibility.scannerActive": "Escáner de código de barras activo",
+  "accessibility.filterCategory": "Filtrar por categoría",
+  "accessibility.filterLocation": "Filtrar por ubicación",
+
+  "conflict.banner": "{count} conflicto(s) de sincronización necesitan resolución",
+  "conflict.title": "Conflicto de sincronización",
+  "conflict.hint": "Otro dispositivo actualizó este artículo. Elija qué versión conservar.",
+  "conflict.localVersion": "Su versión local:",
+  "conflict.tapToResolve": "Resuelva cada conflicto para reanudar la sincronización.",
+  "conflict.keepMine": "Conservar la mía",
+  "conflict.keepServer": "Conservar la del servidor",
+  "conflict.resolved.keepMine": "Conflicto resuelto: se conservó su versión",
+  "conflict.resolved.keepServer": "Conflicto resuelto: se conservó la versión del servidor"
 }

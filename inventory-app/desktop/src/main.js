@@ -5,6 +5,7 @@ import { spawn, execSync, exec } from 'node:child_process';
 import os from 'node:os';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import https from 'node:https';
 import { Bonjour } from 'bonjour-service';
 import { createRequire } from 'node:module';
 import { issueServerCert, getRootCertPath } from './keystore.js';
@@ -304,17 +305,42 @@ function loadUserConfig() {
 }
 
 async function isServerReachable(baseUrl) {
-  const url = `${baseUrl.replace(/\/$/, '')}/api/ping`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 750);
+  const parsed = new URL(`${baseUrl.replace(/\/$/, '')}/api/ping`);
 
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: parsed.hostname,
+      port: parsed.port || 443,
+      path: parsed.pathname,
+      method: 'GET',
+      rejectUnauthorized: false,
+      timeout: 750
+    }, (res) => {
+      res.resume();
+      resolve(res.statusCode >= 200 && res.statusCode < 300);
+    });
+
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
+
+async function updateDuckDns(hostnames, token, ip) {
+  const subNames = hostnames
+    .map(h => h.replace(/\.duckdns\.org$/, ''))
+    .join(',');
+  const url = `https://www.duckdns.org/update?domains=${subNames}&token=${token}&ip=${ip}`;
   try {
-    const res = await fetch(url, { signal: controller.signal });
-    return res.ok;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timeout);
+    const res = await fetch(url);
+    const text = await res.text();
+    if (text.trim() === 'OK') {
+      console.log(`[DuckDNS] Updated ${subNames} -> ${ip}`);
+    } else {
+      console.warn(`[DuckDNS] Update failed for ${subNames}: ${text.trim()}`);
+    }
+  } catch (err) {
+    console.warn(`[DuckDNS] API request failed: ${err.message}`);
   }
 }
 
@@ -347,6 +373,27 @@ async function startServerIfLocal() {
   const userConfig = loadUserConfig();
   const useCustomCert = userConfig.httpsKey && userConfig.httpsCert;
 
+  // Update DuckDNS A records with current LAN IP on every startup
+  if (userConfig.hostname?.endsWith('.duckdns.org')) {
+    let duckToken = userConfig.duckdnsToken;
+    if (!duckToken) {
+      // Fallback: read token from certbot credentials file (pre-existing installs)
+      const iniPath = path.join(app.getPath('userData'), '.inventory-certbot', 'credentials', 'duckdns.ini');
+      try {
+        const ini = fs.readFileSync(iniPath, 'utf8');
+        const match = ini.match(/dns_duckdns_token\s*=\s*(\S+)/);
+        if (match) duckToken = match[1];
+      } catch { /* ignore */ }
+    }
+    if (duckToken) {
+      const duckHosts = [userConfig.hostname];
+      if (userConfig.idpHostname?.endsWith('.duckdns.org')) {
+        duckHosts.push(userConfig.idpHostname);
+      }
+      updateDuckDns(duckHosts, duckToken, localIp);
+    }
+  }
+
   if (useCustomCert) {
     console.log('[Main] Using custom SSL keys from config');
   } else {
@@ -368,8 +415,6 @@ async function startServerIfLocal() {
         // For now, let's throw/return to avoid unsecure connection confusion.
         return;
     }
-  } else {
-    console.log('[Main] Using custom SSL keys from config');
   }
 
   // Option A packaging: in packaged builds we run the server under Electron's Node
@@ -422,23 +467,20 @@ async function startServerIfLocal() {
   try {
      const hostname = os.hostname();
      const name = `inventory-${hostname}`; // Ensure unique-ish name
-     const type = 'http';
-     
-     // Advertise the service. This often triggers the OS or the library to respond to mDNS queries.
-     // Windows 10+ usually handles mDNS if enabled, but this library provides an explicit responder
-     // if the OS is not doing it for us.
-     // Note: We are publishing the *service* _http._tcp.local.
-     // Android NsdManager can discover this.
-     // Standard DNS resolver on Android (getByName) relies on the Responder being active.
-     
+     const type = 'https';
+     const serviceHost = userConfig.hostname || `${hostname}.local`;
+
+     // Advertise the HTTPS service via mDNS so Android can discover it.
+     // When DuckDNS is configured, advertise the FQDN so clients use the correct hostname.
+
      if (bonjourInstance) {
         bonjourInstance.unpublishAll();
         bonjourInstance.destroy();
      }
-     
+
      bonjourInstance = new Bonjour();
-     bonjourInstance.publish({ name, type, port: SERVER_PORT, host: `${hostname}.local` });
-     console.log(`[Bonjour] Published service: ${name}._${type}._tcp.local -> ${hostname}.local:${SERVER_PORT}`);
+     bonjourInstance.publish({ name, type, port: SERVER_PORT, host: serviceHost });
+     console.log(`[Bonjour] Published service: ${name}._${type}._tcp.local -> ${serviceHost}:${SERVER_PORT}`);
   } catch (err) {
       console.error('[Bonjour] Failed to publish service:', err);
   }
@@ -525,27 +567,32 @@ async function restartLocalServerWithDataDir(dataDir) {
   const userConfig = loadUserConfig();
   const useCustomCert = userConfig.httpsKey && userConfig.httpsCert;
 
-  const ksPath = path.join(app.getPath('userData'), 'keystore');
-  const certPath = useCustomCert ? userConfig.httpsCert : path.join(ksPath, 'cert.pem');
-  const keyPath = useCustomCert ? userConfig.httpsKey : path.join(ksPath, 'key.pem');
+  const tempPfxPath = path.join(app.getPath('userData'), 'temp_server.pfx');
+  const localIp = detectLocalIp();
+  const sslipDomain = getSslipDomain(localIp);
 
   serverProcDataDir = dataDir;
+
+  const env = configureServerEnv({
+    processEnv: process.env,
+    isPackaged: app.isPackaged,
+    serverPort: SERVER_PORT,
+    dataDir,
+    registryPath: registryPath(),
+    serverStateDir: app.getPath('userData'),
+    pfxPath: useCustomCert ? undefined : tempPfxPath,
+    pfxPass: '',
+    sslCert: useCustomCert ? userConfig.httpsCert : undefined,
+    sslKey: useCustomCert ? userConfig.httpsKey : undefined,
+    rootCaPath: getRootCertPath(),
+    androidDebugSha256: process.env.ANDROID_DEBUG_SHA256,
+    webAuthnRpId: ngrokUrl ? new URL(ngrokUrl).hostname : (userConfig.idpHostname || userConfig.hostname || sslipDomain),
+    nodeExec,
+    execPath: process.execPath
+  });
+
   serverProc = spawn(nodeExec, [serverEntry], {
-    env: {
-      ...process.env,
-      NODE_ENV: app.isPackaged ? 'production' : (process.env.NODE_ENV || undefined),
-      PORT: String(SERVER_PORT),
-      INVENTORY_DATA_DIR: dataDir,
-      INVENTORY_REGISTRY_PATH: registryPath(),
-      INVENTORY_SERVER_STATE_DIR: app.getPath('userData'),
-      HTTPS_CERT_PATH: certPath,
-      HTTPS_KEY_PATH: keyPath,
-      IDP_HOSTNAME: userConfig.idpHostname,
-      APP_HOSTNAME: userConfig.appHostname,
-      ANDROID_DEBUG_SHA256: process.env.ANDROID_DEBUG_SHA256, // Pass it down
-      WEBAUTHN_RP_ID: ngrokUrl ? new URL(ngrokUrl).hostname : (userConfig.idpHostname || userConfig.hostname || undefined),
-      ...(nodeExec === process.execPath ? { ELECTRON_RUN_AS_NODE: '1' } : {})
-    },
+    env,
     cwd: serverRoot,
     stdio: 'inherit',
     windowsHide: true
@@ -717,20 +764,30 @@ function needsSetup() {
 
 function detectCertDefaults() {
   const possibleRoots = [];
+
+  // Check app-local certbot output (new location under userData)
+  const userDataCertbot = path.join(app.getPath('userData'), '.inventory-certbot', 'config', 'live');
+  possibleRoots.push(userDataCertbot);
+
+  // Check legacy certbot output (old location under USERPROFILE)
+  const legacyCertbot = path.join(os.homedir(), '.inventory-certbot', 'config', 'live');
+  if (legacyCertbot !== userDataCertbot) possibleRoots.push(legacyCertbot);
+
+  // System-wide certbot locations
   if (process.platform === 'win32') possibleRoots.push('C:\\Certbot\\live');
   else if (process.platform === 'linux') possibleRoots.push('/etc/letsencrypt/live');
-  
+
   for (const root of possibleRoots) {
     if (fs.existsSync(root)) {
         try {
             const domains = fs.readdirSync(root).filter(n => fs.statSync(path.join(root, n)).isDirectory());
             if (domains.length > 0) {
                 const domain = domains[0];
-                return {
-                    hostname: domain,
-                    key: path.join(root, domain, 'privkey.pem'),
-                    cert: path.join(root, domain, 'fullchain.pem')
-                };
+                const keyPath = path.join(root, domain, 'privkey.pem');
+                const certPath = path.join(root, domain, 'fullchain.pem');
+                if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+                    return { hostname: domain, key: keyPath, cert: certPath };
+                }
             }
         } catch(e) { /* ignore */ }
     }
@@ -764,7 +821,71 @@ app.whenReady().then(async () => {
   // 2. Setup Check
   if (needsSetup()) {
     ipcMain.handle('setup:getConfigDefaults', async () => detectCertDefaults());
-    
+
+    ipcMain.handle('setup:checkExistingCerts', async (e, { subdomains }) => {
+        const normalizedSubs = (subdomains || []).map(s =>
+            s.includes('.duckdns.org') ? s : `${s}.duckdns.org`
+        );
+        if (normalizedSubs.length === 0) return { found: false };
+
+        const mainDomain = normalizedSubs[0];
+        const baseName = mainDomain.replace(/\.duckdns\.org$/, '');
+        const searchRoots = [
+            path.join(app.getPath('userData'), '.inventory-certbot', 'config', 'live'),
+            path.join(os.homedir(), '.inventory-certbot', 'config', 'live')
+        ];
+
+        for (const root of [...new Set(searchRoots)]) {
+            if (!fs.existsSync(root)) continue;
+
+            // Scan all directories: exact match, without suffix, and -0001 variants
+            let dirs;
+            try { dirs = fs.readdirSync(root).filter(n => fs.statSync(path.join(root, n)).isDirectory()); }
+            catch { continue; }
+
+            // Prioritize exact match, then prefix matches (handles -0001 suffixes)
+            const sorted = dirs.sort((a, b) => {
+                const aExact = a === mainDomain || a === baseName;
+                const bExact = b === mainDomain || b === baseName;
+                if (aExact && !bExact) return -1;
+                if (!aExact && bExact) return 1;
+                return 0;
+            }).filter(d => d === mainDomain || d === baseName || d.startsWith(mainDomain) || d.startsWith(baseName));
+
+            for (const domain of sorted) {
+                const certDir = path.join(root, domain);
+                const keyPath = path.join(certDir, 'privkey.pem');
+                const certPath = path.join(certDir, 'fullchain.pem');
+
+                if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) continue;
+
+                try {
+                    const certPem = fs.readFileSync(certPath, 'utf8');
+                    const x509 = new crypto.X509Certificate(certPem);
+                    const expiresAt = new Date(x509.validTo);
+                    const daysLeft = Math.floor((expiresAt - Date.now()) / 86400000);
+
+                    if (daysLeft <= 0) continue; // expired
+
+                    const result = {
+                        found: true,
+                        hostname: domain,
+                        key: keyPath,
+                        cert: certPath,
+                        expiresAt: expiresAt.toISOString(),
+                        daysLeft,
+                        needsRenewal: daysLeft < 30
+                    };
+                    if (normalizedSubs.length > 1) result.idpHostname = normalizedSubs[1];
+                    return result;
+                } catch (err) {
+                    console.warn('[Setup] Could not parse cert at', certPath, err.message);
+                }
+            }
+        }
+        return { found: false };
+    });
+
     ipcMain.handle('setup:selectFile', async (e, opts) => {
         const { canceled, filePaths } = await dialog.showOpenDialog({ ...opts, properties: ['openFile'] });
         return canceled ? null : filePaths[0];
@@ -811,7 +932,9 @@ app.whenReady().then(async () => {
                 '-Subdomains', subsArg,
                 '-Token', `"${token}"`,
                 '-Email', `"${email}"`,
-                '-ResultFile', `"${resultFile}"`
+                '-ResultFile', `"${resultFile}"`,
+                '-AppDataDir', `"${app.getPath('userData')}"`,
+                '-WebAppPort', String(SERVER_PORT)
             ];
 
             const psArgs = argsParts.join(' ');
@@ -914,7 +1037,8 @@ app.whenReady().then(async () => {
                 hostname: config.hostname,
                 idpHostname: config.idpHostname,
                 httpsKey: config.httpsKey,
-                httpsCert: config.httpsCert
+                httpsCert: config.httpsCert,
+                ...(config.duckdnsToken ? { duckdnsToken: config.duckdnsToken } : {})
             };
             fs.writeFileSync(path.join(app.getPath('userData'), 'config.json'), JSON.stringify(saveData, null, 2));
             

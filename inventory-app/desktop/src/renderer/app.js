@@ -10,6 +10,7 @@ import { registerDevice, signIn } from './webauthn.js';
 import { showPairing } from './pairing.js';
 import { createLookupsController } from './lookups.js';
 import { createItemsController } from './itemsUi.js';
+import { createSyncQueue } from './syncQueue.js';
 import { newEventId } from './utils.js';
 import { applyI18nToDom, getActiveLocale, setUserLocale, t } from './i18n/index.js';
 
@@ -27,7 +28,8 @@ let serverUrl;
 let token;
 let role = 'owner';
 
-let lastSyncAtMs = 0;
+let lastSyncAtMs = Number(localStorage.getItem('lastSyncAtMs')) || 0;
+let online = true;
 
 const api = createApiClient({
   getBaseUrl: () => serverUrl,
@@ -35,6 +37,17 @@ const api = createApiClient({
 });
 
 const el = (id) => document.getElementById(id);
+
+const syncQueue = createSyncQueue({
+  api,
+  onStatusChange(pending) {
+    const badge = el('pendingBadge');
+    if (badge) {
+      badge.textContent = pending > 0 ? `(${pending} pending)` : '';
+      badge.style.display = pending > 0 ? 'inline' : 'none';
+    }
+  }
+});
 
 // Apply i18n to initial DOM content (English remains the default).
 applyI18nToDom(document);
@@ -63,7 +76,7 @@ let activeInventoryId = null;
 
 function setStatus(msg, type = 'info') {
   statusEl.textContent = msg;
-  statusEl.className = 'status-line'; // reset
+  statusEl.className = 'status-bar'; // reset
   if (type !== 'info') {
     statusEl.classList.add(`status-${type}`);
   }
@@ -230,15 +243,24 @@ async function handleScannedBarcode(code, target = 'quick') {
       }
 
       const chosen = choice.item;
-      const res = await api.fetchJson('/api/scan', {
+      // Attach barcode to chosen item explicitly, then scan
+      await api.fetchJson(`/api/items/${chosen.item_id}/barcodes`, {
         method: 'POST',
-        body: JSON.stringify({ barcode: code, item_id: chosen.item_id, override: true, event_id: newEventId() })
-      });
+        body: JSON.stringify({ barcode: code })
+      }).catch(() => { /* barcode may already be attached */ });
 
-      if (res.action === 'incremented' && res.item) {
-        setStatusBrief(t('status.scanned', { name: res.item.name }));
+      const scanRes = await api.fetchJson('/api/scans', {
+        method: 'POST',
+        body: JSON.stringify({
+          events: [{ event_id: newEventId(), barcode: code, delta: 1, item_id: chosen.item_id, scanned_at: Date.now() }]
+        })
+      });
+      const r = scanRes.results?.[0];
+
+      if (r && (r.status === 'applied' || r.status === 'duplicate') && r.item) {
+        setStatusBrief(t('status.scanned', { name: r.item.name }));
         await refreshItems();
-        openItemDialog(res.item);
+        openItemDialog(r.item);
         return;
       }
 
@@ -246,29 +268,49 @@ async function handleScannedBarcode(code, target = 'quick') {
       return;
     }
 
-    const res = await api.fetchJson('/api/scan', {
+    // Standard quick scan via unified endpoint
+    const scanRes = await api.fetchJson('/api/scans', {
       method: 'POST',
-      body: JSON.stringify({ barcode: code })
+      body: JSON.stringify({
+        events: [{ event_id: newEventId(), barcode: code, delta: 1, scanned_at: Date.now() }]
+      })
     });
+    const r = scanRes.results?.[0];
 
-    if (res.action === 'incremented' && res.item) {
-      setStatusBrief(t('status.scanned', { name: res.item.name }));
+    if (r && (r.status === 'applied' || r.status === 'duplicate') && r.item) {
+      setStatusBrief(t('status.scanned', { name: r.item.name }));
       await refreshItems();
-      if (canEdit()) openItemDialog(res.item);
+      if (canEdit()) openItemDialog(r.item);
       return;
     }
 
-    if (res.action === 'not_found') {
+    if (r && r.status === 'not_found') {
+      // Track unresolved barcodes in localStorage
+      try {
+        const key = 'inventory_unresolved_barcodes';
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        const entry = existing.find(e => e.barcode === code);
+        if (entry) {
+          entry.count++;
+          entry.lastSeen = Date.now();
+        } else {
+          existing.push({ barcode: code, count: 1, firstSeen: Date.now(), lastSeen: Date.now() });
+        }
+        // Keep only the most recent 100
+        if (existing.length > 100) existing.splice(0, existing.length - 100);
+        localStorage.setItem(key, JSON.stringify(existing));
+      } catch { /* ignore storage errors */ }
+
       if (canEdit()) openItemDialog({ barcode: code, quantity: 1 });
       else setStatus(t('status.barcodeNotFound'));
       return;
     }
 
-    if (res.action === 'multiple' && Array.isArray(res.items) && res.items.length) {
+    if (r && r.status === 'ambiguous' && Array.isArray(r.items) && r.items.length) {
       const choice = await chooseItemViaDialog({
         title: t('dialog.multipleMatches.title'),
         hint: t('dialog.multipleMatches.hint', { barcode: code }),
-        items: res.items,
+        items: r.items,
         allowCreate: false
       });
       if (!choice || choice.action !== 'choose') {
@@ -278,15 +320,18 @@ async function handleScannedBarcode(code, target = 'quick') {
 
       const chosen = choice.item;
 
-      const res2 = await api.fetchJson('/api/scan', {
+      const scanRes2 = await api.fetchJson('/api/scans', {
         method: 'POST',
-        body: JSON.stringify({ barcode: code, item_id: chosen.item_id, event_id: newEventId() })
+        body: JSON.stringify({
+          events: [{ event_id: newEventId(), barcode: code, delta: 1, item_id: chosen.item_id, scanned_at: Date.now() }]
+        })
       });
+      const r2 = scanRes2.results?.[0];
 
-      if (res2.action === 'incremented' && res2.item) {
-        setStatus(t('status.incrementedQuantity', { name: res2.item.name }));
+      if (r2 && (r2.status === 'applied' || r2.status === 'duplicate') && r2.item) {
+        setStatus(t('status.incrementedQuantity', { name: r2.item.name }));
         await refreshItems();
-        if (canEdit()) openItemDialog(res2.item);
+        if (canEdit()) openItemDialog(r2.item);
         return;
       }
 
@@ -431,11 +476,16 @@ function renderItems() {
 async function refreshItems() {
   try {
     setStatus('Syncing…');
+    // Flush any pending offline operations before pulling
+    await syncQueue.flush();
     await itemsUi.refreshItems();
     lastSyncAtMs = Date.now();
+    localStorage.setItem('lastSyncAtMs', String(lastSyncAtMs));
+    online = true;
     // Refresh status line with the new last-sync timestamp.
     itemsUi.renderItems();
   } catch (e) {
+    online = false;
     setStatus(`Sync error: ${e.message}`);
   }
 }
@@ -461,7 +511,8 @@ async function addAltBarcode() {
 }
 
 async function refreshLookups() {
-  return lookups.refreshLookups();
+  await lookups.refreshLookups();
+  syncFilterBar();
 }
 
 function updateLookupActionButtons() {
@@ -492,7 +543,83 @@ async function deleteSelectedLocation() {
   return lookups.deleteSelectedLocation({ refreshItems });
 }
 
+function toggleSidebar() {
+  const sidebar = el('sidebar');
+  const layout = sidebar?.closest('.layout');
+  const isCollapsed = sidebar?.classList.toggle('collapsed');
+  if (layout) layout.classList.toggle('sidebar-collapsed', isCollapsed);
+  localStorage.setItem('sidebarCollapsed', isCollapsed ? '1' : '');
+}
+
+function restoreSidebarState() {
+  if (localStorage.getItem('sidebarCollapsed') === '1') {
+    const sidebar = el('sidebar');
+    const layout = sidebar?.closest('.layout');
+    sidebar?.classList.add('collapsed');
+    if (layout) layout.classList.add('sidebar-collapsed');
+  }
+}
+
+function syncFilterBar() {
+  const mainCat = el('mainCategoryFilter');
+  const mainLoc = el('mainLocationFilter');
+  const sidebarCat = el('categoryFilter');
+  const sidebarLoc = el('locationFilter');
+
+  if (mainCat && sidebarCat) {
+    mainCat.innerHTML = sidebarCat.innerHTML;
+    mainCat.value = sidebarCat.value;
+  }
+  if (mainLoc && sidebarLoc) {
+    mainLoc.innerHTML = sidebarLoc.innerHTML;
+    mainLoc.value = sidebarLoc.value;
+  }
+}
+
 function wireUi() {
+  restoreSidebarState();
+
+  const sidebarToggle = el('sidebarToggle');
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', toggleSidebar);
+  }
+
+  // Main filter bar: sync selections bidirectionally with sidebar
+  const mainCat = el('mainCategoryFilter');
+  const mainLoc = el('mainLocationFilter');
+
+  if (mainCat) {
+    mainCat.addEventListener('change', () => {
+      const sidebarCat = el('categoryFilter');
+      if (sidebarCat) sidebarCat.value = mainCat.value;
+      updateLookupActionButtons();
+      renderItems();
+    });
+  }
+
+  if (mainLoc) {
+    mainLoc.addEventListener('change', () => {
+      const sidebarLoc = el('locationFilter');
+      if (sidebarLoc) sidebarLoc.value = mainLoc.value;
+      updateLookupActionButtons();
+      renderItems();
+    });
+  }
+
+  const clearBtn = el('clearFilters');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (mainCat) mainCat.value = '';
+      if (mainLoc) mainLoc.value = '';
+      const sidebarCat = el('categoryFilter');
+      const sidebarLoc = el('locationFilter');
+      if (sidebarCat) sidebarCat.value = '';
+      if (sidebarLoc) sidebarLoc.value = '';
+      updateLookupActionButtons();
+      renderItems();
+    });
+  }
+
   const copyBtn = el('copyPairPayload');
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
@@ -601,10 +728,14 @@ function wireUi() {
 
   el('search').addEventListener('input', renderItems);
   el('categoryFilter').addEventListener('change', () => {
+    // Sync sidebar filter to main filter bar
+    if (mainCat) mainCat.value = el('categoryFilter').value;
     updateLookupActionButtons();
     renderItems();
   });
   el('locationFilter').addEventListener('change', () => {
+    // Sync sidebar filter to main filter bar
+    if (mainLoc) mainLoc.value = el('locationFilter').value;
     updateLookupActionButtons();
     renderItems();
   });
@@ -719,6 +850,13 @@ function wireUi() {
       return;
     }
 
+    // Mod+B: toggle sidebar
+    if (isMod && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      toggleSidebar();
+      return;
+    }
+
     // "/": focus search (avoid stealing when typing)
     if (!inTextField && e.key === '/') {
       e.preventDefault();
@@ -727,11 +865,27 @@ function wireUi() {
   });
 }
 
+// Periodic connectivity check: ping server every 15s, auto-flush queue when reconnected.
+let connectivityTimer = null;
+function startConnectivityCheck() {
+  if (connectivityTimer) return;
+  connectivityTimer = setInterval(async () => {
+    try {
+      await api.fetchJson('/api/ping');
+      if (!online) {
+        online = true;
+        // Came back online - flush pending and refresh
+        await syncQueue.flush();
+        await refreshItems();
+      }
+    } catch {
+      online = false;
+    }
+  }, 15_000);
+}
+
 async function boot() {
   try {
-    // Keystore check removed
-
-
     const remoteUrl = localStorage.getItem('remote_server_url');
     if (remoteUrl) {
       serverUrl = remoteUrl;
@@ -751,6 +905,7 @@ async function boot() {
     applyRoleToUi();
     updateLookupActionButtons();
     wireUi();
+    startConnectivityCheck();
   } catch (e) {
     setStatus(`Error: ${e.message}`);
   }

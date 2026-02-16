@@ -10,6 +10,7 @@ import com.inventory.android.net.ItemUpsertRequestDto
 import com.inventory.android.net.LocationUpsertRequestDto
 import com.inventory.android.net.ScanEventDto
 import kotlinx.coroutines.flow.first
+import retrofit2.HttpException
 import java.util.UUID
 
 class InventoryRepository(
@@ -21,6 +22,39 @@ class InventoryRepository(
   private suspend fun nextNegativeId(currentMin: Int?): Int {
     val min = currentMin ?: 0
     return if (min >= 0) -1 else (min - 1)
+  }
+
+  suspend fun conflictCount(): Int {
+    return db.pendingItemUpdateDao().countConflicts()
+  }
+
+  suspend fun listConflicts(): List<PendingItemUpdateEntity> {
+    return db.pendingItemUpdateDao().listConflicts()
+  }
+
+  /**
+   * Resolve a conflict by choosing "keep mine" (force push) or "keep server" (discard local).
+   */
+  suspend fun resolveConflict(clientId: String, keepMine: Boolean): Result<Unit> {
+    return runCatching {
+      val now = System.currentTimeMillis()
+      if (keepMine) {
+        // Re-queue with a fresh timestamp so LWW guard passes
+        val conflict = db.pendingItemUpdateDao().listConflicts().firstOrNull { it.client_id == clientId }
+          ?: throw IllegalStateException("conflict_not_found")
+        db.pendingItemUpdateDao().upsert(
+          conflict.copy(last_modified = now, state = "pending", last_attempt_at = null)
+        )
+      } else {
+        // Discard local changes, refresh from server
+        db.pendingItemUpdateDao().deleteById(clientId)
+        try {
+          refreshItems()
+        } catch (_: Exception) {
+          // Offline - item will refresh on next sync
+        }
+      }
+    }
   }
 
   suspend fun pendingCreatesCount(): Int {
@@ -334,6 +368,61 @@ class InventoryRepository(
     }
   }
 
+  /**
+   * Soft-delete an item locally and queue for server sync.
+   * If paired and online, also attempts immediate server deletion.
+   */
+  suspend fun deleteItem(itemId: Int): Result<Unit> {
+    return runCatching {
+      val now = System.currentTimeMillis()
+
+      // Try server delete first if paired
+      val mode = AppMode.fromRaw(prefs.appModeFlow.first())
+      if (mode == AppMode.Paired) {
+        try {
+          val api = apiServiceProvider()
+          api.deleteItem(itemId)
+          // Server confirmed - soft-delete locally
+          db.itemsDao().softDelete(itemId, now)
+          return@runCatching
+        } catch (_: Exception) {
+          // Server unreachable - fall through to local-only
+        }
+      }
+
+      // Local soft-delete + queue update for sync
+      val existing = db.itemsDao().getById(itemId)
+        ?: throw IllegalStateException("not_found")
+
+      db.withTransaction {
+        db.itemsDao().softDelete(itemId, now)
+        db.pendingItemUpdateDao().upsert(
+          PendingItemUpdateEntity(
+            client_id = UUID.randomUUID().toString(),
+            item_id = itemId,
+            name = existing.name,
+            description = existing.description,
+            quantity = existing.quantity,
+            barcode = existing.barcode,
+            barcode_corrupted = existing.barcode_corrupted,
+            category_id = existing.category_id,
+            location_id = existing.location_id,
+            purchase_date = existing.purchase_date,
+            warranty_info = existing.warranty_info,
+            value = existing.value,
+            serial_number = existing.serial_number,
+            photo_path = existing.photo_path,
+            deleted = 1,
+            last_modified = now,
+            state = "pending",
+            created_at = now,
+            last_attempt_at = null
+          )
+        )
+      }
+    }
+  }
+
   suspend fun createLocalCategory(name: String): Result<CategoryEntity> {
     return runCatching {
       val now = System.currentTimeMillis()
@@ -560,7 +649,9 @@ class InventoryRepository(
   suspend fun applyPendingItemUpdates(limit: Int = 50): Result<Int> {
     return runCatching {
       val api = apiServiceProvider()
-      val pending = db.pendingItemUpdateDao().listPending(limit)
+      // Backoff: don't retry errors within the last 30 seconds
+      val retryAfter = System.currentTimeMillis() - 30_000
+      val pending = db.pendingItemUpdateDao().listPending(limit, retryAfter)
       if (pending.isEmpty()) return@runCatching 0
       val now = System.currentTimeMillis()
 
@@ -616,6 +707,12 @@ class InventoryRepository(
             db.pendingItemUpdateDao().setState(p.client_id, "sent", now)
           }
           sent++
+        } catch (e: HttpException) {
+          if (e.code() == 409) {
+            db.pendingItemUpdateDao().setState(p.client_id, "conflict", now)
+          } else {
+            db.pendingItemUpdateDao().setState(p.client_id, "error", now)
+          }
         } catch (_: Exception) {
           db.pendingItemUpdateDao().setState(p.client_id, "error", now)
         }

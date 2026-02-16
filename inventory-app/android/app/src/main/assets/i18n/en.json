@@ -36,6 +36,13 @@
   "item.detail.barcodeCorrupted": "Barcode: (corrupted/unreadable)",
   "item.detail.serial": "Serial: {serial}",
 
+  "item.delete.title": "Delete Item",
+  "item.delete.confirm": "Are you sure you want to delete \"{name}\"?",
+  "item.delete.success": "Deleted: {name}",
+  "item.delete.failed": "Delete failed: {error}",
+
+  "common.delete": "Delete",
+
   "scan.start": "Scan",
   "scan.stop": "Stop",
   "scan.override": "Override scan (choose item or create new)",
@@ -74,6 +81,8 @@
   "home.notSyncedYet": "Not synced yet",
   "home.search": "Search",
   "home.items.title": "Items",
+  "home.items.empty.heading.noItems": "No items yet",
+  "home.items.empty.heading.noMatch": "No results found",
   "home.items.empty.noMatch": "No matching items. Clear search or filters to see more.",
   "home.items.empty.none": "No items yet. Add an item or scan a barcode.",
   "home.scan.title": "Scan",
@@ -152,5 +161,24 @@
   "dialog.selectItem.createNew": "Create new item",
 
   "categories.new": "New category",
-  "locations.new": "New location"
+  "locations.new": "New location",
+
+  "accessibility.incrementQty": "Increase quantity for {name}",
+  "accessibility.decrementQty": "Decrease quantity for {name}",
+  "accessibility.itemCard": "{name}, quantity {qty}",
+  "accessibility.syncConnected": "Connected to desktop",
+  "accessibility.syncOffline": "Offline mode",
+  "accessibility.scannerActive": "Barcode scanner active",
+  "accessibility.filterCategory": "Filter by category",
+  "accessibility.filterLocation": "Filter by location",
+
+  "conflict.banner": "{count} sync conflict(s) need resolution",
+  "conflict.title": "Sync Conflict",
+  "conflict.hint": "Another device updated this item. Choose which version to keep.",
+  "conflict.localVersion": "Your local version:",
+  "conflict.tapToResolve": "Resolve each conflict to resume syncing.",
+  "conflict.keepMine": "Keep mine",
+  "conflict.keepServer": "Keep server",
+  "conflict.resolved.keepMine": "Conflict resolved: kept your version",
+  "conflict.resolved.keepServer": "Conflict resolved: kept server version"
 }
