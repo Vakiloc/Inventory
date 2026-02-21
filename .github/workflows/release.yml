@@ -341,8 +341,9 @@ jobs:
             const owner = context.repo.owner
             const repo = context.repo.repo
             const tag = context.eventName === 'workflow_dispatch'
-              ? core.getInput('tag', { required: true })
+              ? (context.payload.inputs && context.payload.inputs.tag)
               : context.ref.replace('refs/tags/', '')
+            if (!tag) throw new Error('Could not determine release tag')
 
             core.info(`Ensuring release for tag: ${tag}`)
 
@@ -359,6 +360,7 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           generate_release_notes: true
           overwrite_files: false
