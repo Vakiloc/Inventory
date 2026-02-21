@@ -1,6 +1,12 @@
 {
   "name": "inventory-desktop",
   "version": "0.1.4",
+  "description": "Household Inventory desktop application",
+  "author": {
+    "name": "Inventory",
+    "email": "inventory@localhost"
+  },
+  "homepage": "https://github.com/Vakiloc/Inventory",
   "private": true,
   "type": "module",
   "main": "src/main.js",
