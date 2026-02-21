@@ -1,11 +1,14 @@
-# Releasing (Windows + Android APK)
+# Releasing (All Platforms)
 
 This repo ships downloadable builds via GitHub Releases.
 
 ## What gets published
 
-- **Windows desktop**: installer from Electron (`inventory-app/desktop`)
-- **Android**: **release APK** (`app-release.apk`) from `inventory-app/android`
+- **Windows desktop**: NSIS installer (`.exe`) from Electron (`inventory-app/desktop`)
+- **macOS desktop**: DMG + zip from Electron (`inventory-app/desktop`)
+- **Linux desktop**: AppImage + deb from Electron (`inventory-app/desktop`)
+- **Android (native)**: release APK (`app-release.apk`) from `inventory-app/android`
+- **iOS (Capacitor)**: unsigned IPA from `inventory-app/mobile`
 
 ## Local procedure (manual)
 
@@ -20,23 +23,25 @@ From `inventory-app/`:
 Before tagging a release, verify build outputs and local databases are **not tracked by git**:
 
 - `git status` should be clean
-- Artifacts like `desktop/dist-electron/**`, `android/app/artifacts/**`, and `server/data/*.sqlite*` must not be committed
+- Artifacts like `desktop/dist-electron/**`, `android/app/artifacts/**`, `mobile/dist/**`, and `server/data/*.sqlite*` must not be committed
 
 If something is accidentally tracked already, removing it from `.gitignore` is **not enough** — untrack it with:
 
 - `git rm -r --cached <path>`
 
-### 2) Build Windows desktop installer
-
-Prereqs:
-- Windows needs **symlink privilege** for `electron-builder` to unpack its tooling.
-  - Enable **Developer Mode** (Windows Settings → For developers), or
-  - run PowerShell **as Administrator**.
+### 2) Build desktop installer
 
 From `inventory-app/`:
 
 - Set env `RELEASE_VERSION` (example `0.1.1`)
-- Run `npm -w desktop run dist:win`
+- Run `npm -w desktop run dist` (auto-detects current platform)
+- Or target a specific platform:
+  - `npm -w desktop run dist:win` (Windows NSIS)
+  - `npm -w desktop run dist:mac` (macOS DMG + zip)
+  - `npm -w desktop run dist:linux` (Linux AppImage + deb)
+
+Prereqs (Windows only):
+- **Symlink privilege** for `electron-builder`: enable **Developer Mode** (Windows Settings → For developers), or run as Administrator.
 
 Outputs go under:
 - `inventory-app/desktop/dist-electron/`
@@ -44,44 +49,53 @@ Outputs go under:
 ### 3) Build Android release APK
 
 Prereqs:
-- Gradle/AGP requires a modern JDK. If your system `java` is 1.8, point `JAVA_HOME` to Android Studio’s JDK.
+- Gradle/AGP requires a modern JDK. If your system `java` is 1.8, point `JAVA_HOME` to Android Studio's JDK.
 
 From `inventory-app/android/`:
 
-- Set `JAVA_HOME` to `C:\Program Files\Android\Android Studio\jbr`
+- Set `JAVA_HOME` to Android Studio's JBR (e.g., `C:\Program Files\Android\Android Studio\jbr` on Windows)
 - Set `VERSION_NAME` (example `0.1.1`)
 - Set `VERSION_CODE` (example `20260105`)
-- Run `./gradlew.bat :app:copyReleaseApk`
+- Run `./gradlew :app:copyReleaseApk` (Linux/macOS) or `./gradlew.bat :app:copyReleaseApk` (Windows)
 
 Output is copied to:
 - `inventory-app/android/app/artifacts/app-release.apk`
 
+### 4) Build Capacitor mobile (iOS)
+
+From `inventory-app/`:
+
+- `npm run build -w mobile`
+- `cd mobile && npm run cap:sync:ios`
+
+Then open Xcode:
+- `cd mobile && npx cap open ios`
+- Archive and export via Xcode (Product → Archive)
+
 ## Local procedure (automated)
 
-Use the PowerShell helper:
+Use the Node.js release script from `inventory-app/`:
 
-- `inventory-app/scripts/release.ps1 -Version 0.1.1`
-
-Or via npm from `inventory-app/`:
-
-- `npm run release -- -Version 0.1.1`
+```sh
+node scripts/release.mjs 0.1.5
+```
 
 By default this runs:
 
 - `npm test` (server + desktop)
 - Android unit tests (`:app:testDebugUnitTest`) if Android is enabled
-- Desktop Windows installer build (unless `-SkipDesktop`)
-- Android release APK build (unless `-SkipAndroid`)
+- Desktop installer build for the current platform
+- Android release APK build
 
 Optional flags:
-- `-SkipDesktop` / `-SkipAndroid` / `-SkipTests`
-- `-AndroidJdkPath "C:\\Program Files\\Android\\Android Studio\\jbr"`
-- `-VersionCode 20260105`
-- `-CreateGitTag` and `-PushGitTag` to create/push `vX.Y.Z`
+- `--skip-desktop` / `--skip-android` / `--skip-tests`
+- `--jdk-path "C:\Program Files\Android\Android Studio\jbr"`
+- `--version-code 20260105`
+- `--create-tag` and `--push-tag` to create/push `vX.Y.Z`
 
 Notes:
 
-- `-Version` must be plain SemVer like `0.1.1` (no leading `v`).
+- Version must be plain SemVer like `0.1.1` (no leading `v`).
 - Tagging requires a clean git working tree.
 
 ## CI/CD procedure (recommended)
@@ -89,15 +103,18 @@ Notes:
 ### Validation
 
 - PRs and pushes to `main` run validations in [.github/workflows/ci.yml](../.github/workflows/ci.yml)
+- Node tests run on Windows, macOS, and Linux (matrix)
+- Android unit tests run on Linux
 
 ### Release
 
 - Create and push a tag like `v0.1.1`
 - GitHub Actions will:
-  1) re-run validations
-  2) build Windows desktop installer
-  3) build Android release APK
-  4) publish a GitHub Release with both attached
+  1) re-run validations (3-OS matrix + Android)
+  2) build desktop installers for Windows, macOS, and Linux
+  3) build native Android release APK
+  4) build Capacitor iOS unsigned IPA
+  5) publish a GitHub Release with all artifacts attached
 
 Release workflow: [.github/workflows/release.yml](../.github/workflows/release.yml)
 
@@ -110,3 +127,13 @@ If you set these GitHub secrets, the release APK will be signed:
 - `ANDROID_KEY_PASSWORD`
 
 If not set, the workflow still builds an **unsigned** release APK.
+
+## iOS signing
+
+The CI workflow currently produces an **unsigned** IPA. For App Store or TestFlight distribution:
+
+1. Set up an Apple Developer account
+2. Configure code signing certificates and provisioning profiles
+3. Update the `build_mobile_ios` job in `release.yml` with your signing identity
+
+For ad-hoc distribution (sideloading), the unsigned IPA can be re-signed with tools like `ios-deploy` or Apple Configurator.

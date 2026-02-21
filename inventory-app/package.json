@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "server",
-    "desktop"
+    "desktop",
+    "mobile"
   ],
   "dependencies": {
     "7zip-bin": "5.2.0"
@@ -19,11 +20,12 @@
     "dev": "npm run dev -w server",
     "dev:desktop": "npm run dev -w desktop",
     "dev:all": "concurrently --kill-others --success first -n server,desktop \"npm run dev -w server\" \"npm run dev -w desktop\"",
-    "dev:all:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/kill-ports.ps1 && npm run dev:all",
+    "dev:all:clean": "node scripts/kill-ports.mjs && npm run dev:all",
     "build": "npm run build -w server && npm run build -w desktop",
+    "clean": "node scripts/clean.mjs",
     "lint:i18n": "node scripts/check-i18n-keys.mjs",
     "test": "npm run lint:i18n && npm test -w server && npm test -w desktop",
-    "release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release.ps1",
-    "setup:certs": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-certbot-duckdns-split.ps1"
+    "release": "node scripts/release.mjs",
+    "setup:certs": "node scripts/setup-certbot-duckdns-split.mjs"
   }
 }

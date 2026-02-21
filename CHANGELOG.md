@@ -44,8 +44,23 @@ All notable changes to this project will be documented in this file.
 - **LAN IP fallback**: `ApiClient` uses LAN IPs from QR payload when custom hostnames resolve to unreachable public IPs.
 - **i18n**: New keys for delete confirmation, empty states, accessibility descriptions, and conflict resolution (en + es).
 
+**Mobile (Capacitor — new)**
+- **Cross-platform mobile app**: New `mobile/` workspace using Capacitor 6 + Vite + vanilla JS, targeting both iOS and Android from a single codebase.
+- **Offline-first sync engine**: Mirrors the native Android sync protocol — bootstrap via `GET /api/export`, push pending creates/updates/scans, pull incremental items, refresh categories and locations.
+- **QR code pairing**: Scan or paste pairing JSON from the desktop app to pair the mobile device.
+- **Barcode scanning**: Camera-based scanning via `@zxing/browser` with `@capacitor-mlkit/barcode-scanning` for native fallback.
+- **Network detection**: Uses `@capacitor/network` plugin (native) with browser `online`/`offline` event fallback. Auto-syncs on network reconnect.
+- **Periodic background sync**: 60-second interval sync with network-aware scheduling.
+- **Mobile-first UI**: Dark theme, bottom tab navigation (Items / Scan / Settings), FAB for adding items, safe-area-inset support, touch-optimized item cards.
+- **Offline queues**: localStorage-based pending queues for item creates, updates, and scan events.
+
 **Infrastructure**
 - **CI**: Added `npm audit --audit-level=high` step to fail builds on high-severity vulnerabilities.
+- **Cross-platform CI**: Node tests now run on Windows, macOS, and Linux (matrix strategy).
+- **Cross-platform desktop builds**: Release workflow builds Windows (NSIS), macOS (DMG + zip), and Linux (AppImage + deb) installers.
+- **iOS build**: Release workflow builds unsigned Capacitor iOS IPA on macOS runner.
+- **Mobile web build**: CI validates mobile workspace builds on all platforms.
+- **Cross-platform scripts**: All build/release/utility scripts rewritten from PowerShell to Node.js (`.mjs`) for Windows/macOS/Linux compatibility.
 
 ### Changed
 
@@ -60,6 +75,9 @@ All notable changes to this project will be documented in this file.
 - **Certbot script**: Rewritten with app-local certbot directories, DuckDNS A-record registration, existing-cert reuse, and Let's Encrypt rate-limit detection with contextual error messages.
 - **mDNS service**: Bonjour now advertises `_https._tcp` (was `_http._tcp`) and uses the DuckDNS FQDN when configured.
 - **Scan API calls**: All scan operations migrated to the new unified `/api/scans` batch endpoint.
+- **Cross-platform packaging**: electron-builder now targets macOS (DMG + zip) and Linux (AppImage + deb) in addition to Windows (NSIS).
+- **macOS cert path detection**: Certbot certificate lookup now includes `/etc/letsencrypt/live` and `/usr/local/etc/letsencrypt/live` on macOS.
+- **Scripts rewritten**: All PowerShell scripts (`.ps1`) replaced with cross-platform Node.js scripts (`.mjs`): `kill-ports`, `clean`, `release`, `setup-certbot`, `setup-certbot-duckdns-split`, `start-dev-webauthn`, `dist`.
 
 **Android**
 - **mDNS discovery**: Service type changed from `_http._tcp.` to `_https._tcp.` to match the HTTPS-only server.

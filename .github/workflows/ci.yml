@@ -5,11 +5,16 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   node:
-    name: Node tests (Windows)
-    runs-on: windows-latest
+    name: Node tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
     defaults:
       run:
         working-directory: inventory-app
@@ -33,6 +38,9 @@ jobs:
 
       - name: Desktop build (renderer)
         run: npm run build -w desktop
+
+      - name: Mobile build (web)
+        run: npm run build -w mobile
 
   android:
     name: Android unit tests (Linux)

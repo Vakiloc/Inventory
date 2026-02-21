@@ -9,7 +9,20 @@
       "Bash(git push:*)",
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(xargs:*)",
+      "Bash(npm view:*)",
+      "Bash(npm audit:*)",
+      "Bash(dir:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(npx cap:*)",
+      "Bash(node -e:*)",
+      "Bash(npm ls:*)",
+      "Bash(NODE_OPTIONS=\"--require ./_tar-patch.cjs\" npx cap add:*)",
+      "Bash(test:*)",
+      "Bash(NODE_OPTIONS=\"--require ./_tar-patch.cjs\" npx cap:*)",
+      "Bash(node scripts/cap-sync.mjs:*)"
     ]
   }
 }

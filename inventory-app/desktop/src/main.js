@@ -819,6 +819,7 @@ function detectCertDefaults() {
 
   // System-wide certbot locations
   if (process.platform === 'win32') possibleRoots.push('C:\\Certbot\\live');
+  else if (process.platform === 'darwin') possibleRoots.push('/etc/letsencrypt/live', '/usr/local/etc/letsencrypt/live');
   else if (process.platform === 'linux') possibleRoots.push('/etc/letsencrypt/live');
 
   for (const root of possibleRoots) {
@@ -936,10 +937,10 @@ app.whenReady().then(async () => {
     });
 
     ipcMain.handle('setup:generateCert', async (e, args) => {
-        // Run PowerShell script
-        const scriptPath = path.join(__dirname, '..', 'scripts', 'setup-certbot.ps1');
+        // Run cross-platform Node.js certbot script
+        const scriptPath = path.join(__dirname, '..', 'scripts', 'setup-certbot.mjs');
         const resultFile = path.join(app.getPath('temp'), `setup-result-${Date.now()}.json`);
-        
+
         let { subdomains, token, email } = args;
 
         // Backward compatibility for stale renderers
@@ -951,106 +952,96 @@ app.whenReady().then(async () => {
         if (!subdomains || !Array.isArray(subdomains)) {
              return { success: false, message: "Invalid parameters: subdomains missing" };
         }
-        
+
         return new Promise((resolve) => {
             const sender = e.sender;
             const log = (msg) => sender.send('setup:log', msg);
-            
-            // Format for display
-            const displayDomains = subdomains.map(d => d.includes('.duckdns.org') ? d : `${d}.duckdns.org`).join(', ');
-            log(`Prompting for Admin privileges to run Certbot for: ${displayDomains}...`);
 
-            log(`(A new PowerShell window will open. Please accept the UAC prompt.)`);
-            
-            // Normalize domains: ensure .duckdns.org suffix before passing to PowerShell
-            // (defends against Start-Process -ArgumentList mangling the array)
+            // Normalize domains
             const normalizedSubs = subdomains.map(s =>
                 s.includes('.duckdns.org') ? s : `${s}.duckdns.org`
             );
-            const subsArg = normalizedSubs.map(s => `"${s}"`).join(',');
+            const displayDomains = normalizedSubs.join(', ');
+            log(`Running Certbot for: ${displayDomains}...`);
 
-            const argsParts = [
-                '-NoProfile',
-                '-ExecutionPolicy', 'Bypass',
-                '-File', `"${scriptPath}"`,
-                '-Subdomains', subsArg,
-                '-Token', `"${token}"`,
-                '-Email', `"${email}"`,
-                '-ResultFile', `"${resultFile}"`,
-                '-AppDataDir', `"${app.getPath('userData')}"`,
-                '-WebAppPort', String(SERVER_PORT)
+            const scriptArgs = [
+                scriptPath,
+                `--subdomains=${normalizedSubs.join(',')}`,
+                `--token=${token}`,
+                `--email=${email}`,
+                `--result-file=${resultFile}`,
+                `--app-data-dir=${app.getPath('userData')}`,
+                `--web-app-port=${SERVER_PORT}`
             ];
 
-            const psArgs = argsParts.join(' ');
+            log(`Starting certificate setup...`);
 
-            const cmd = `Start-Process powershell -Verb RunAs -ArgumentList '${psArgs}'`;
-            
-            log(`Please watch the external PowerShell window for progress.`);
-            
-            exec(`powershell "${cmd}"`, (err) => {
-                if (err) {
-                    log('ERROR: Failed to launch elevated process: ' + err.message);
-                    resolve({ success: false, message: 'Failed to launch process' });
-                    return;
-                }
-                
-                // Poll for result file
-                let attempts = 0;
-                const maxAttempts = 180; // 3 minutes
-                const interval = setInterval(() => {
-                    attempts++;
-                    if (fs.existsSync(resultFile)) {
-                        clearInterval(interval);
-                        try {
-                            const raw = fs.readFileSync(resultFile, 'utf8');
-                            const data = JSON.parse(raw);
-                            fs.unlinkSync(resultFile); // Cleanup
-                            
-                            if (data.success) {
-                                log('Script reported success. Verifying certificate paths...');
+            const child = spawn(process.execPath, scriptArgs, {
+                stdio: ['pipe', 'pipe', 'pipe'],
+                env: { ...process.env }
+            });
 
-                                // Double-check paths exist (catches PowerShell script bugs)
-                                if (!fs.existsSync(data.result.key)) {
-                                    log('ERROR: Key path does not exist: ' + data.result.key);
-                                    resolve({
-                                        success: false,
-                                        message: 'Certificate key file not accessible',
-                                        details: `Expected: ${data.result.key}\n\nThe PowerShell script reported success but the file cannot be found.`
-                                    });
-                                    return;
-                                }
+            child.stdout.on('data', (data) => log(data.toString().trim()));
+            child.stderr.on('data', (data) => log(data.toString().trim()));
 
-                                if (!fs.existsSync(data.result.cert)) {
-                                    log('ERROR: Cert path does not exist: ' + data.result.cert);
-                                    resolve({
-                                        success: false,
-                                        message: 'Certificate file not accessible',
-                                        details: `Expected: ${data.result.cert}\n\nThe PowerShell script reported success but the file cannot be found.`
-                                    });
-                                    return;
-                                }
+            child.on('exit', (code) => {
+                // Read result file
+                if (fs.existsSync(resultFile)) {
+                    try {
+                        const raw = fs.readFileSync(resultFile, 'utf8');
+                        const data = JSON.parse(raw);
+                        fs.unlinkSync(resultFile);
 
-                                log('Certificate paths verified.');
-                                resolve({ success: true, result: data.result });
-                            } else {
-                                log('Script reported error: ' + data.message);
-                                if (data.output) {
-                                  log('--- Script Output ---');
-                                  log(data.output);
-                                  log('---------------------');
-                                }
-                                resolve({ success: false, message: data.message });
+                        if (data.success) {
+                            log('Script reported success. Verifying certificate paths...');
+
+                            if (!fs.existsSync(data.result.key)) {
+                                log('ERROR: Key path does not exist: ' + data.result.key);
+                                resolve({
+                                    success: false,
+                                    message: 'Certificate key file not accessible',
+                                    details: `Expected: ${data.result.key}`
+                                });
+                                return;
                             }
-                        } catch (e) {
-                            log('Error reading result file: ' + e.message);
-                            resolve({ success: false, message: 'Invalid result file content' });
+
+                            if (!fs.existsSync(data.result.cert)) {
+                                log('ERROR: Cert path does not exist: ' + data.result.cert);
+                                resolve({
+                                    success: false,
+                                    message: 'Certificate file not accessible',
+                                    details: `Expected: ${data.result.cert}`
+                                });
+                                return;
+                            }
+
+                            log('Certificate paths verified.');
+                            resolve({ success: true, result: data.result });
+                        } else {
+                            log('Script reported error: ' + data.message);
+                            if (data.output) {
+                              log('--- Script Output ---');
+                              log(data.output);
+                              log('---------------------');
+                            }
+                            resolve({ success: false, message: data.message });
                         }
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        log('Timed out waiting for script execution.');
-                        resolve({ success: false, message: 'Timeout' });
+                    } catch (e) {
+                        log('Error reading result file: ' + e.message);
+                        resolve({ success: false, message: 'Invalid result file content' });
                     }
-                }, 1000);
+                } else if (code !== 0) {
+                    log(`Certbot script exited with code ${code}`);
+                    resolve({ success: false, message: `Script exited with code ${code}` });
+                } else {
+                    log('Script completed but no result file found.');
+                    resolve({ success: false, message: 'No result file produced' });
+                }
+            });
+
+            child.on('error', (err) => {
+                log('ERROR: Failed to launch certbot script: ' + err.message);
+                resolve({ success: false, message: 'Failed to launch process' });
             });
         });
     });

@@ -13,8 +13,11 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "stage:server": "node scripts/prepare-packaged-server.mjs",
-    "dist:win": "npm run build && npm run stage:server && node scripts/dist-win.mjs",
-    "setup:certs": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-certbot.ps1"
+    "dist": "npm run build && npm run stage:server && node scripts/dist.mjs",
+    "dist:win": "npm run build && npm run stage:server && node scripts/dist.mjs --win",
+    "dist:mac": "npm run build && npm run stage:server && node scripts/dist.mjs --mac",
+    "dist:linux": "npm run build && npm run stage:server && node scripts/dist.mjs --linux",
+    "setup:certs": "node scripts/setup-certbot.mjs"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.2.2",
@@ -71,6 +74,20 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
     }
   }
 }

@@ -6,8 +6,9 @@ This document serves as a comprehensive technical specification for the Inventor
 
  The application follows a **Local-First, Distributed** architecture designed for offline-capable LAN environments.
 
-*   **Host (Desktop)**: An Electron application acts as the central server (Source of Truth) for the local network. It runs an Express.js Node.js server.
-*   **Client (Android)**: A native Android application that connects to the Host via REST API.
+*   **Host (Desktop)**: An Electron application acts as the central server (Source of Truth) for the local network. It runs an Express.js Node.js server. Supports Windows, macOS, and Linux.
+*   **Client (Android — native)**: A native Android application (Kotlin/Compose) that connects to the Host via REST API.
+*   **Client (Mobile — Capacitor)**: A cross-platform mobile app (iOS + Android) built with Capacitor 6, vanilla JS, and Vite. Shares the same sync protocol as the native Android app.
 *   **Security & Networking**:
     *   **Local PKI**: Desktop generates a unique Root CA and issues ephemeral certificates for local IP addresses.
     *   **Domain Resolution**: Uses `sslip.io` (Wildcard DNS) to provide valid TLS origins (e.g., `https://192-168-1-5.sslip.io`) for WebAuthn compatibility.
@@ -206,6 +207,44 @@ The `contextBridge` exposes safe methods to the renderer via `window.inventory`:
 
 ### C. Remote Access (Ngrok)
 The application integrates **Ngrok** to optionally expose the local Express server to the internet, allowing Android clients to sync even when not on the same LAN.
+
+## 3.5 Mobile (Capacitor) Architecture
+
+The Capacitor mobile app (`mobile/`) provides an alternative cross-platform client for iOS and Android, built with web technologies.
+
+### A. Tech Stack
+*   **Framework**: Capacitor 6 — wraps a Vite-bundled vanilla JS web app in a native WebView container.
+*   **Build**: Vite for web asset bundling; Capacitor CLI for syncing assets into native Xcode/Android Studio projects.
+*   **State Management**: `localStorage`-based persistence via `storage.js` module.
+*   **Key Libraries**:
+    *   `@capacitor/network`: Native network status detection (connected/disconnected events).
+    *   `@capacitor-mlkit/barcode-scanning`: Native MLKit barcode scanning (camera).
+    *   `@zxing/browser`: WebView-based barcode scanning fallback.
+
+### B. Module Architecture
+
+| Module | Purpose |
+| :--- | :--- |
+| `api.js` | REST client with Bearer auth, reads `baseUrl`/`token` from storage |
+| `storage.js` | localStorage persistence: preferences, item/category/location caches, pending queues |
+| `sync.js` | Offline sync engine mirroring Android's `syncOnce()` (bootstrap → push creates → push updates → push scans → pull items → refresh lookups) |
+| `network.js` | Network monitoring via `@capacitor/network` with browser fallback; periodic 60s sync; auto-sync on reconnect |
+| `app.js` | Screen navigation, UI rendering, event wiring, pairing, scanning |
+
+### C. Sync Protocol
+The Capacitor mobile app follows the same sync protocol as the native Android app (see Section 4.C). The sync engine (`sync.js`) mirrors `InventoryRepository.syncOnce()`:
+1.  Bootstrap via `GET /api/export` (first sync only)
+2.  Push pending item creates (`POST /api/items`)
+3.  Push pending item updates (`PUT /api/items/:id`, 409 → conflict state)
+4.  Push pending scan events (`POST /api/scans/apply`)
+5.  Pull incremental items (`GET /api/items?since=X&includeDeleted=1`)
+6.  Refresh categories and locations
+
+### D. Offline Storage
+Uses `localStorage` instead of Room/SQLite:
+*   **Preferences**: `baseUrl`, `token`, `inventoryId`, `locale`, `lastSyncMs`, `itemsSinceMs`, `bootstrapped`
+*   **Data caches**: items, categories, locations (JSON arrays)
+*   **Pending queues**: `pendingScans`, `pendingCreates`, `pendingUpdates` (flushed during sync)
 
 ## 4. Sync & Replication
 

@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-Household Inventory is a **local-first, offline-capable** inventory management system designed for LAN environments. The Desktop (Electron) app acts as the central host and source of truth, running an embedded Node.js/Express server with SQLite storage. The Android (Kotlin/Compose) app connects as a client over HTTPS on the local network, syncing via REST API with offline queuing and background sync. An optional Google Drive sync allows sharing data between Desktop instances.
+Household Inventory is a **local-first, offline-capable** inventory management system designed for LAN environments. The Desktop (Electron) app acts as the central host and source of truth, running an embedded Node.js/Express server with SQLite storage. Mobile clients connect over HTTPS on the local network, syncing via REST API with offline queuing and background sync. Two mobile clients are available: a native **Android** (Kotlin/Compose) app and a cross-platform **Capacitor** (iOS + Android) app built with vanilla JS. An optional Google Drive sync allows sharing data between Desktop instances.
+
+The desktop app is fully **cross-platform**, supporting Windows, macOS, and Linux.
 
 Current version: **0.1.4** (desktop `package.json`).
 
@@ -11,7 +13,7 @@ Current version: **0.1.4** (desktop `package.json`).
 ```
 Inventory/
 ├── inventory-app/               # npm workspaces root
-│   ├── package.json             # Workspaces: server, desktop
+│   ├── package.json             # Workspaces: server, desktop, mobile
 │   ├── server/                  # Node.js Express API + SQLite
 │   │   ├── src/
 │   │   │   ├── index.js         # Entry point, HTTPS setup, graceful shutdown
@@ -61,8 +63,20 @@ Inventory/
 │   │   │   ├── security/        # WebAuthn, device identity
 │   │   │   └── sync/            # WorkManager background sync
 │   │   └── app/src/androidTest/ # JUnit + instrumentation tests
+│   ├── mobile/                  # Capacitor mobile app (iOS + Android)
+│   │   ├── src/                 # Vanilla JS app (Vite-bundled)
+│   │   │   ├── app.js           # Main app logic, screen navigation
+│   │   │   ├── api.js           # REST API client with Bearer auth
+│   │   │   ├── storage.js       # localStorage persistence + offline queues
+│   │   │   ├── sync.js          # Offline sync engine (mirrors Android protocol)
+│   │   │   ├── network.js       # Network detection + periodic sync
+│   │   │   ├── index.html       # Mobile UI (5 screens)
+│   │   │   └── styles.css       # Dark mobile-first theme
+│   │   ├── scripts/cap-sync.mjs # Capacitor sync wrapper (patches tar v7 compat)
+│   │   ├── android/             # Capacitor Android native project
+│   │   └── ios/                 # Capacitor iOS native project (Xcode)
 │   ├── docs/                    # API.md, SECURITY.md, ANDROID.md, RELEASING.md, etc.
-│   └── scripts/                 # Build, release, and utility scripts
+│   └── scripts/                 # Build, release, and utility scripts (Node.js, cross-platform)
 ├── docs/
 │   └── SYSTEM_DESIGN.md         # Comprehensive architecture & schema reference
 ├── .github/workflows/           # CI (ci.yml) and Release (release.yml)
@@ -76,6 +90,7 @@ Inventory/
 | **Server** | Node.js, Express, ES modules | better-sqlite3, Zod, @simplewebauthn/server, cors |
 | **Desktop** | Electron 30, Vite, vanilla JS | @zxing/browser, @simplewebauthn/browser, bonjour-service, ngrok, node-forge, selfsigned, qrcode |
 | **Android** | Kotlin, Jetpack Compose | Room, Retrofit, WorkManager, OkHttp, ZXing, Credentials API |
+| **Mobile** | Capacitor 6, Vite, vanilla JS | @capacitor/network, @capacitor-mlkit/barcode-scanning, @zxing/browser |
 
 ## Common Commands
 
@@ -113,11 +128,24 @@ Android (from `inventory-app/android/`):
 ./gradlew :app:assembleDebug       # Build debug APK
 ```
 
+### Mobile (Capacitor)
+
+```sh
+npm run dev -w mobile              # Vite dev server (port 5175)
+npm run build -w mobile            # Build web assets
+npm run cap:sync -w mobile         # Sync web assets to native projects
+npm run cap:open:ios -w mobile     # Open Xcode project
+npm run cap:open:android -w mobile # Open Android Studio project
+```
+
 ### Build & Release
 
 ```sh
 npm run build                      # Build all workspaces
 npm run dist:win -w desktop        # Windows NSIS installer (electron-builder)
+npm run dist:mac -w desktop        # macOS DMG + zip
+npm run dist:linux -w desktop      # Linux AppImage + deb
+npm run dist -w desktop            # Build for current platform
 ```
 
 ## Testing Details
@@ -160,7 +188,7 @@ The IdP creates auth middleware (`requireAuth`, `requireOwner`) consumed by the 
 
 - **Last-Write-Wins (LWW)**: Items use a `last_modified` Unix timestamp (ms). On update, if `payload.last_modified < db.last_modified`, the server rejects with 409 Conflict.
 - **Idempotent scan events**: Clients generate UUIDs for each scan event. The server deduplicates via the `scan_events` table, preventing double-counting on retry.
-- **Android sync cycle**: Pair via QR -> bootstrap via `GET /api/export` -> push scans via `POST /api/scans/apply` -> pull incremental changes via `GET /api/items?since=<ts>`. Background sync via WorkManager (~15 min intervals).
+- **Mobile sync cycle**: Pair via QR -> bootstrap via `GET /api/export` -> push scans via `POST /api/scans/apply` -> pull incremental changes via `GET /api/items?since=<ts>`. Android: background sync via WorkManager (~15 min intervals). Capacitor mobile: periodic sync every 60s + auto-sync on network reconnect.
 
 ### Security
 
@@ -174,19 +202,22 @@ The IdP creates auth middleware (`requireAuth`, `requireOwner`) consumed by the 
 
 The desktop renderer uses **vanilla JavaScript** with ES modules bundled by Vite. There is no component framework (React, Vue, etc.). State management is done with module-level variables and direct DOM manipulation.
 
+The Capacitor mobile app also uses **vanilla JavaScript** with Vite, sharing the same architectural patterns as the desktop renderer (REST API client, localStorage-based offline queues, DOM manipulation). The mobile UI is optimized for touch with bottom navigation, FAB, and safe-area-inset support.
+
 ## CI/CD
 
 ### `ci.yml` — Runs on PR and push to `main`
 
-1. **Node tests** (Windows, Node 20): `npm ci` -> `npm test` -> `npm run build -w desktop`
+1. **Node tests** (Windows, macOS, Linux — matrix): `npm ci` -> `npm test` -> `npm run build -w desktop` -> `npm run build -w mobile`
 2. **Android unit tests** (Linux, Java 17): `./gradlew :app:testDebugUnitTest` -> `./gradlew :app:assembleDebug`
 
 ### `release.yml` — Triggered by version tags (`v*.*.*`) or manual dispatch
 
-1. Validates Node and Android tests
-2. Builds Windows NSIS installer via electron-builder
-3. Builds signed Android release APK
-4. Publishes both artifacts to a GitHub Release
+1. Validates Node tests (3-OS matrix) and Android tests
+2. Builds desktop installers: Windows (NSIS .exe), macOS (DMG + zip), Linux (AppImage + deb)
+3. Builds signed Android release APK (native Kotlin app)
+4. Builds unsigned iOS IPA (Capacitor mobile app)
+5. Publishes all artifacts to a GitHub Release
 
 ## Code Conventions
 
@@ -195,8 +226,10 @@ The desktop renderer uses **vanilla JavaScript** with ES modules bundled by Vite
 - **Validation**: API payloads are validated with Zod schemas in `server/src/validation.js`.
 - **i18n**: Translation strings live in `i18n/` directories within both server and desktop. Run `npm run lint:i18n` to check key consistency.
 - **Database changes**: Add new tables or columns via `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE` in `inventory/db.js` (inventory schema) or `idp/stateDb.js` (identity/state schema). Migrations are embedded in code, not separate files.
-- **Vanilla JS frontend**: No JSX, no templating engine. UI updates are done via direct DOM manipulation (`document.getElementById`, `innerHTML`, event listeners).
-- **Android**: Kotlin with Jetpack Compose for UI, Room for local persistence, Retrofit for HTTP.
+- **Vanilla JS frontend**: No JSX, no templating engine. UI updates are done via direct DOM manipulation (`document.getElementById`, `innerHTML`, event listeners). Both desktop and mobile use this approach.
+- **Android (native)**: Kotlin with Jetpack Compose for UI, Room for local persistence, Retrofit for HTTP.
+- **Mobile (Capacitor)**: Vanilla JS wrapped in Capacitor 6 for iOS/Android native containers. Uses `@capacitor/network` for connectivity, `@zxing/browser` for barcode scanning.
+- **Scripts**: All build/release/utility scripts are written in Node.js (`.mjs` files) for cross-platform compatibility. No PowerShell dependency.
 
 ## Environment Variables
 
@@ -224,8 +257,9 @@ The desktop renderer uses **vanilla JavaScript** with ES modules bundled by Vite
 | `docs/SYSTEM_DESIGN.md` | Comprehensive architecture, schemas, sync protocol, security |
 | `inventory-app/docs/API.md` | REST endpoint reference |
 | `inventory-app/docs/SECURITY.md` | Security model (LAN auth, transport, at-rest) |
-| `inventory-app/docs/ANDROID.md` | Android client guide |
-| `inventory-app/docs/RELEASING.md` | Release procedures |
+| `inventory-app/docs/ANDROID.md` | Android (native) client guide |
+| `inventory-app/docs/MOBILE.md` | Capacitor mobile (iOS + Android) guide |
+| `inventory-app/docs/RELEASING.md` | Release procedures (all platforms) |
 | `inventory-app/docs/MAINTENANCE.md` | Cleanup & re-initialization |
 | `inventory-app/docs/DRIVE_SYNC.md` | Google Drive sync setup |
 | `inventory-app/android/README.md` | Android development setup & testing |
