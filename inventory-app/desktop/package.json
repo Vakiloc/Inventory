@@ -42,17 +42,17 @@
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "^30.0.9",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.8.1",
     "jsdom": "^24.1.3",
-    "vite": "^5.4.11",
-    "vitest": "^2.1.9",
+    "vite": "^6.4.1",
+    "vitest": "^3.2.4",
     "wait-on": "^7.2.0"
   },
   "build": {
     "appId": "com.inventory.desktop",
     "productName": "Inventory",
     "artifactName": "inventory_v${version}-${arch}.${ext}",
-    "electronVersion": "30.0.9",
+    "electronVersion": "30.5.1",
     "directories": {
       "output": "dist-electron"
     },
