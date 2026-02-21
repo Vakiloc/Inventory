@@ -71,6 +71,7 @@ android/local.properties
 # Testing & Coverage
 coverage/
 .nyc_output/
+inventory-app/desktop/test-artifacts/
 
 # Vim/Editor
 .swp
