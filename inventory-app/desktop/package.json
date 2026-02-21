@@ -51,7 +51,7 @@
   "build": {
     "appId": "com.inventory.desktop",
     "productName": "Inventory",
-    "artifactName": "inventory_v${version}.${ext}",
+    "artifactName": "inventory_v${version}-${arch}.${ext}",
     "electronVersion": "30.0.9",
     "directories": {
       "output": "dist-electron"
