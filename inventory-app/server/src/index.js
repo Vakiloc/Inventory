@@ -27,7 +27,14 @@ if (process.env.HTTPS_KEY_PATH && process.env.HTTPS_CERT_PATH) {
     try {
         httpsKeyData = fs.readFileSync(process.env.HTTPS_KEY_PATH);
         httpsCertData = fs.readFileSync(process.env.HTTPS_CERT_PATH);
-    } catch (e) { /* ignore, handled later */ }
+    } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to read TLS cert/key files:', e.message);
+        // eslint-disable-next-line no-console
+        console.error('  HTTPS_KEY_PATH:', process.env.HTTPS_KEY_PATH);
+        // eslint-disable-next-line no-console
+        console.error('  HTTPS_CERT_PATH:', process.env.HTTPS_CERT_PATH);
+    }
 }
 
 const app = createApp({
@@ -78,6 +85,14 @@ if (process.env.HTTPS_PFX_PATH) {
     // eslint-disable-next-line no-console
     console.log(`inventory-server listening on http://0.0.0.0:${port}`);
   });
+}
+
+if (!tlsOptions) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    'inventory-server: WARNING - Running without TLS (plain HTTP). '
+    + 'Check HTTPS_PFX_PATH or HTTPS_KEY_PATH/HTTPS_CERT_PATH configuration.'
+  );
 }
 
 // Track active sockets so shutdown can reliably release the port even if

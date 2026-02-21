@@ -428,9 +428,25 @@ async function createInventoryFromUi() {
 }
 
 async function loadToken() {
-  const res = await fetch(`${serverUrl}/api/admin/token`);
-  const body = await res.json();
-  token = body.token;
+  const maxRetries = 5;
+  const baseDelayMs = 500;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(`${serverUrl}/api/admin/token`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      token = body.token;
+      return;
+    } catch (e) {
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelayMs * Math.pow(2, attempt);
+        console.warn(`loadToken attempt ${attempt + 1} failed: ${e.message}, retrying in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw e;
+      }
+    }
+  }
 }
 
 function optionAll(label) {

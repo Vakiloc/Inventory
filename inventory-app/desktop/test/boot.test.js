@@ -104,6 +104,10 @@ describe('App Boot Logic', () => {
       setItem: vi.fn(),
     };
     mocks.getServerUrl.mockResolvedValue({ serverUrl: 'http://local' });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ token: 'test-owner-token' }),
+    });
   });
 
   it('boots in LOCAL mode when no remote url is stored', async () => {

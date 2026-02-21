@@ -5,6 +5,7 @@ import { spawn, execSync, exec } from 'node:child_process';
 import os from 'node:os';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import http from 'node:http';
 import https from 'node:https';
 import { Bonjour } from 'bonjour-service';
 import { createRequire } from 'node:module';
@@ -102,7 +103,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SERVER_PORT = Number(process.env.INVENTORY_PORT || 443);
-const SERVER_URL = process.env.INVENTORY_SERVER_URL || `https://localhost:${SERVER_PORT}`;
+let SERVER_URL = process.env.INVENTORY_SERVER_URL || `https://localhost:${SERVER_PORT}`;
 
 let serverProc;
 let serverProcDataDir = null;
@@ -304,13 +305,18 @@ function loadUserConfig() {
   return {};
 }
 
-async function isServerReachable(baseUrl) {
+/**
+ * Low-level probe: tries to reach baseUrl/api/ping using the protocol
+ * implied by the URL (http or https).
+ */
+async function tryReach(baseUrl) {
   const parsed = new URL(`${baseUrl.replace(/\/$/, '')}/api/ping`);
+  const mod = parsed.protocol === 'https:' ? https : http;
 
   return new Promise((resolve) => {
-    const req = https.request({
+    const req = mod.request({
       hostname: parsed.hostname,
-      port: parsed.port || 443,
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
       path: parsed.pathname,
       method: 'GET',
       rejectUnauthorized: false,
@@ -324,6 +330,36 @@ async function isServerReachable(baseUrl) {
     req.on('timeout', () => { req.destroy(); resolve(false); });
     req.end();
   });
+}
+
+async function isServerReachable(baseUrl) {
+  return tryReach(baseUrl);
+}
+
+/**
+ * Tries the given URL first, then falls back to HTTP if the URL was HTTPS.
+ * Returns the working URL or null.
+ */
+async function probeServerUrl(baseUrl) {
+  if (await tryReach(baseUrl)) return baseUrl;
+  if (baseUrl.startsWith('https://')) {
+    const httpUrl = baseUrl.replace(/^https:/, 'http:');
+    if (await tryReach(httpUrl)) return httpUrl;
+  }
+  return null;
+}
+
+/**
+ * Polls until the server becomes reachable, trying HTTPS then HTTP.
+ * Returns the working URL or null if the server never responds.
+ */
+async function waitForServer(url, { maxAttempts = 40, intervalMs = 150 } = {}) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const reachableUrl = await probeServerUrl(url);
+    if (reachableUrl) return reachableUrl;
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  return null;
 }
 
 async function updateDuckDns(hostnames, token, ip) {
@@ -462,7 +498,21 @@ async function startServerIfLocal() {
     // eslint-disable-next-line no-console
     console.log('server exited', code);
   });
-  
+
+  // Wait for the server to become reachable before proceeding.
+  const reachableUrl = await waitForServer(SERVER_URL);
+  if (!reachableUrl) {
+    // eslint-disable-next-line no-console
+    console.error('[Main] Server did not become reachable within timeout');
+  } else if (reachableUrl !== SERVER_URL) {
+    // eslint-disable-next-line no-console
+    console.warn(`[Main] Server reachable at ${reachableUrl} instead of expected ${SERVER_URL}`);
+    SERVER_URL = reachableUrl;
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(`[Main] Server confirmed reachable at ${SERVER_URL}`);
+  }
+
   // Publish mDNS service to ensure .local resolution works on Android
   try {
      const hostname = os.hostname();
@@ -609,26 +659,20 @@ async function restartLocalServerWithDataDir(dataDir) {
   });
 
   // Wait briefly for the new server to come up.
-  const started = await new Promise((resolve) => {
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      if (await isServerReachable(SERVER_URL)) {
-        clearInterval(interval);
-        // eslint-disable-next-line no-console
-        console.log('electron: server became reachable');
-        return resolve(true);
-      }
-      if (attempts >= 40) { // Increased timeout to 6s
-        clearInterval(interval);
-        // eslint-disable-next-line no-console
-        console.error('electron: server failed to become reachable');
-        return resolve(false);
-      }
-    }, 150);
-  });
+  const reachableUrl = await waitForServer(SERVER_URL);
+  if (!reachableUrl) {
+    // eslint-disable-next-line no-console
+    console.error('electron: server failed to become reachable');
+    return { error: 'start_failed' };
+  }
 
-  if (!started) return { error: 'start_failed' };
+  if (reachableUrl !== SERVER_URL) {
+    // eslint-disable-next-line no-console
+    console.warn(`[Main] Restarted server reachable at ${reachableUrl} instead of ${SERVER_URL}`);
+    SERVER_URL = reachableUrl;
+  }
+  // eslint-disable-next-line no-console
+  console.log('electron: server became reachable');
   return { ok: true };
 }
 
