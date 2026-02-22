@@ -125,8 +125,8 @@ dependencies {
   implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
   // WebAuthn / Passkeys
-  implementation("androidx.credentials:credentials:1.2.2")
-  implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
+  implementation("androidx.credentials:credentials:1.5.0")
+  implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
 
   // QR/Barcode scanning
   implementation("com.journeyapps:zxing-android-embedded:4.3.0")
