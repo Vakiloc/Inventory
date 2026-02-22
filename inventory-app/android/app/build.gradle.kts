@@ -1,6 +1,6 @@
 plugins {
   id("com.android.application")
-  id("org.jetbrains.kotlin.android")
+  id("org.jetbrains.kotlin.plugin.compose")
   id("com.google.devtools.ksp")
 }
 
@@ -8,7 +8,7 @@ import org.gradle.api.tasks.Copy
 
 android {
   namespace = "com.inventory.android"
-  compileSdk = 34
+  compileSdk = 36
 
   val envVersionCode = System.getenv("VERSION_CODE")?.toIntOrNull()
   val envVersionName = System.getenv("VERSION_NAME")
@@ -34,7 +34,7 @@ android {
   defaultConfig {
     applicationId = "com.inventory.android"
     minSdk = 26
-    targetSdk = 34
+    targetSdk = 35
     versionCode = envVersionCode ?: 1
     versionName = envVersionName ?: "0.1.0"
 
@@ -59,24 +59,16 @@ android {
     compose = true
   }
 
-  composeOptions {
-    kotlinCompilerExtensionVersion = "1.5.8"
-  }
-
   packaging {
     resources {
       excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
   }
 
-  kotlinOptions {
-    jvmTarget = "11"
-  }
-
-  // Ensure javac target matches Kotlin/KSP (avoids JVM target validation errors)
+  // jvmTarget defaults to compileOptions.targetCompatibility with AGP 9 built-in Kotlin
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
   }
 }
 
@@ -89,13 +81,13 @@ tasks.register<Copy>("copyReleaseApk") {
 }
 
 dependencies {
-  val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
+  val composeBom = platform("androidx.compose:compose-bom:2026.01.01")
   implementation(composeBom)
   androidTestImplementation(composeBom)
 
-  implementation("androidx.core:core-ktx:1.12.0")
-  implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-  implementation("androidx.activity:activity-compose:1.8.2")
+  implementation("androidx.core:core-ktx:1.17.0")
+  implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+  implementation("androidx.activity:activity-compose:1.12.4")
   implementation("org.slf4j:slf4j-android:1.7.36")
 
   implementation("androidx.compose.ui:ui")
@@ -103,20 +95,19 @@ dependencies {
   debugImplementation("androidx.compose.ui:ui-tooling")
   implementation("androidx.compose.material3:material3")
   implementation("androidx.compose.material:material-icons-extended")
-  implementation("androidx.navigation:navigation-compose:2.7.7")
+  implementation("androidx.navigation:navigation-compose:2.9.7")
 
-  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
   // Local storage
-  implementation("androidx.datastore:datastore-preferences:1.0.0")
+  implementation("androidx.datastore:datastore-preferences:1.2.0")
 
   // Background sync
-  implementation("androidx.work:work-runtime-ktx:2.9.0")
+  implementation("androidx.work:work-runtime-ktx:2.11.1")
 
   // Room
-  implementation("androidx.room:room-runtime:2.6.1")
-  implementation("androidx.room:room-ktx:2.6.1")
-  ksp("androidx.room:room-compiler:2.6.1")
+  implementation("androidx.room:room-runtime:2.8.4")
+  ksp("androidx.room:room-compiler:2.8.4")
 
   // Networking
   implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -125,8 +116,8 @@ dependencies {
   implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
   // WebAuthn / Passkeys
-  implementation("androidx.credentials:credentials:1.2.2")
-  implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
+  implementation("androidx.credentials:credentials:1.5.0")
+  implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
 
   // QR/Barcode scanning
   implementation("com.journeyapps:zxing-android-embedded:4.3.0")
@@ -137,7 +128,7 @@ dependencies {
   androidTestImplementation("androidx.test.ext:junit:1.2.1")
   androidTestImplementation("androidx.test:runner:1.6.2")
   androidTestImplementation("androidx.test:rules:1.6.1")
-  androidTestImplementation("androidx.work:work-testing:2.9.0")
+  androidTestImplementation("androidx.work:work-testing:2.11.1")
 
   androidTestImplementation("org.mockito:mockito-android:5.10.0")
   androidTestImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")

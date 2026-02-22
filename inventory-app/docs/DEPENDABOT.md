@@ -148,7 +148,7 @@ If Dependabot opens a PR that conflicts with existing `package.json` or `build.g
 
 | Dependency | Blocker | Resolution |
 |------------|---------|------------|
-| `androidx.room:room-runtime` 2.8+ | Requires Kotlin 2.0 migration | Deferred until Kotlin 2.0 migration is planned |
+| ~~`androidx.room:room-runtime` 2.8+~~ | ~~Requires Kotlin 2.0 migration~~ | Resolved — Kotlin 2.3.0 / AGP 9.0.1 / Room 2.8.4 migration completed |
 | `electron` (major bumps) | May require IPC API changes | Review release notes, test IPC thoroughly before merging |
 
 ### Permanent Exceptions
@@ -230,4 +230,4 @@ This document is a living guide. Update it when:
 - Update patterns emerge (e.g., frequent failures in a package)
 - Tooling changes (e.g., new CI requirements)
 
-**Last updated**: 2026-02-15
+**Last updated**: 2026-02-22
