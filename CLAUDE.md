@@ -258,6 +258,8 @@ The Capacitor mobile app also uses **vanilla JavaScript** with Vite, sharing the
 | `inventory-app/docs/API.md` | REST endpoint reference |
 | `inventory-app/docs/SECURITY.md` | Security model (LAN auth, transport, at-rest) |
 | `inventory-app/docs/ANDROID.md` | Android (native) client guide |
+| `inventory-app/docs/CONTRIBUTING.md` | Development workflow, testing, PR process |
+| `inventory-app/docs/DEPENDABOT.md` | Dependency update strategy and merge criteria |
 | `inventory-app/docs/MOBILE.md` | Capacitor mobile (iOS + Android) guide |
 | `inventory-app/docs/RELEASING.md` | Release procedures (all platforms) |
 | `inventory-app/docs/MAINTENANCE.md` | Cleanup & re-initialization |
