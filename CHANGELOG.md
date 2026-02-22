@@ -13,11 +13,6 @@ All notable changes to this project will be documented in this file.
 - **Referential integrity on import**: `importSnapshotLww` validates that imported `category_id`/`location_id` values reference existing records; invalid references are nullified before upsert.
 - **Input validation hardening**: Added `max()` length constraints to all Zod schemas (item name 500, description 5000, barcode 128, etc.) and range constraints (quantity ≤ 999999, value ≥ 0, deleted 0|1).
 - **Duplicate name prevention**: Creating a category or location with an existing name now returns 409 Conflict.
-- **Split-domain mode**: New `IDP_HOSTNAME` / `APP_HOSTNAME` env vars enable deploying IdP and Inventory on separate hostnames.
-- **Multi-inventory support**: Registry-based system (`inventories.json`) allowing multiple inventory databases per server instance.
-- **`X-Inventory-Id` header**: API requests can target a specific inventory by ID.
-- **`GET /api/inventories` endpoint**: Lists available inventories.
-- **Environment variables**: `INVENTORY_SERVER_STATE_DIR`, `INVENTORY_REGISTRY_PATH`, `WEBAUTHN_RP_ID`, `IDP_HOSTNAME`, `APP_HOSTNAME`.
 
 **Desktop**
 - **Offline-first sync queue**: New `syncQueue.js` module queues item creates/updates/deletes and scan events while offline, with exponential-backoff retry and localStorage persistence.
@@ -64,16 +59,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-**Server**
-- **Server architecture**: Split monolithic server into IdP (Identity Provider) and Inventory modules with backward-compatible re-export shims.
-- **Default port**: Changed from 5199 to 443 (HTTPS standard).
-- **Database ownership**: WebAuthn credentials and challenge transactions moved from `inventory.sqlite` to `server-state.sqlite` (managed by IdP module).
-- **Pairing QR payload**: Now includes LAN IP addresses (`ips` field) for custom hostname resolution on Android.
-- **409 Conflict response**: Now includes `clientTimestamp` alongside `serverItem` for better client-side debugging.
-
 **Desktop**
 - **Certbot script**: Rewritten with app-local certbot directories, DuckDNS A-record registration, existing-cert reuse, and Let's Encrypt rate-limit detection with contextual error messages.
-- **mDNS service**: Bonjour now advertises `_https._tcp` (was `_http._tcp`) and uses the DuckDNS FQDN when configured.
+- **mDNS service**: Bonjour now uses the DuckDNS FQDN when configured.
 - **Scan API calls**: All scan operations migrated to the new unified `/api/scans` batch endpoint.
 - **Cross-platform packaging**: electron-builder now targets macOS (DMG + zip) and Linux (AppImage + deb) in addition to Windows (NSIS).
 - **macOS cert path detection**: Certbot certificate lookup now includes `/etc/letsencrypt/live` and `/usr/local/etc/letsencrypt/live` on macOS.
@@ -99,6 +87,39 @@ All notable changes to this project will be documented in this file.
 - **Server**: `POST /api/items/sync` bulk item upsert endpoint.
 - **Server**: `override` parameter on scan events (force barcode reassignment removed).
 - **Server**: `forceAttachBarcodeToItem()` function and associated logic.
+
+## [0.1.4] - 2026-02-21
+
+### Added
+
+**Server**
+- **Split-domain mode**: New `IDP_HOSTNAME` / `APP_HOSTNAME` env vars enable deploying IdP and Inventory on separate hostnames.
+- **Multi-inventory support**: Registry-based system (`inventories.json`) allowing multiple inventory databases per server instance.
+- **`X-Inventory-Id` header**: API requests can target a specific inventory by ID.
+- **`GET /api/inventories` endpoint**: Lists available inventories.
+- **Environment variables**: `INVENTORY_SERVER_STATE_DIR`, `INVENTORY_REGISTRY_PATH`, `WEBAUTHN_RP_ID`, `IDP_HOSTNAME`, `APP_HOSTNAME`.
+
+**Documentation**
+- Added CONTRIBUTING.md and DEPENDABOT.md.
+
+### Changed
+
+**Server**
+- **Server architecture**: Split monolithic server into IdP (Identity Provider) and Inventory modules with backward-compatible re-export shims.
+- **Default port**: Changed from 5199 to 443 (HTTPS standard).
+- **Database ownership**: WebAuthn credentials and challenge transactions moved from `inventory.sqlite` to `server-state.sqlite` (managed by IdP module).
+- **Pairing QR payload**: Now includes LAN IP addresses (`ips` field) for custom hostname resolution on Android.
+- **409 Conflict response**: Now includes `clientTimestamp` alongside `serverItem` for better client-side debugging.
+
+**Desktop**
+- **mDNS service**: Bonjour now advertises `_https._tcp` (was `_http._tcp`).
+
+**Dependencies**
+- Bumped npm dependencies (Electron 40, Vite 7, Vitest 4, Zod 4).
+
+### Fixed
+- **Desktop**: Certificate setup path detection and error handling.
+- **Desktop**: Windows symlink handling in certificate validation.
 
 ## [0.1.3] - 2026-02-06
 ### Added
