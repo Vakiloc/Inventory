@@ -111,7 +111,7 @@ dependencies {
   implementation("androidx.datastore:datastore-preferences:1.0.0")
 
   // Background sync
-  implementation("androidx.work:work-runtime-ktx:2.9.0")
+  implementation("androidx.work:work-runtime-ktx:2.11.1")
 
   // Room
   implementation("androidx.room:room-runtime:2.6.1")
@@ -137,7 +137,7 @@ dependencies {
   androidTestImplementation("androidx.test.ext:junit:1.2.1")
   androidTestImplementation("androidx.test:runner:1.6.2")
   androidTestImplementation("androidx.test:rules:1.6.1")
-  androidTestImplementation("androidx.work:work-testing:2.9.0")
+  androidTestImplementation("androidx.work:work-testing:2.11.1")
 
   androidTestImplementation("org.mockito:mockito-android:5.10.0")
   androidTestImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
