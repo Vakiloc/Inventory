@@ -55,7 +55,7 @@ All notable changes to this project will be documented in this file.
 - **Offline queues**: localStorage-based pending queues for item creates, updates, and scan events.
 
 **Infrastructure**
-- **CI**: Added `npm audit --audit-level=high` step to fail builds on high-severity vulnerabilities.
+- **CI**: Added `npm audit --audit-level=critical` step to fail builds on critical-severity vulnerabilities.
 - **Cross-platform CI**: Node tests now run on Windows, macOS, and Linux (matrix strategy).
 - **Cross-platform desktop builds**: Release workflow builds Windows (NSIS), macOS (DMG + zip), and Linux (AppImage + deb) installers.
 - **iOS build**: Release workflow builds unsigned Capacitor iOS IPA on macOS runner.
@@ -85,6 +85,8 @@ All notable changes to this project will be documented in this file.
 
 **Dependencies**
 - Upgraded `supertest` 6 → 7, `tar` 6 → 7, `qs` 6.14 → 6.15.
+- Upgraded `electron` 30 → 35 (fixes GHSA-vmqv-hx8q-j7mg ASAR integrity bypass), `@electron/rebuild` 3 → 4.
+- Added `minimatch` >=10.2.1 override to resolve 22 high-severity ReDoS vulnerabilities (GHSA-3ppc-4f35-3m26).
 - Removed `@simplewebauthn/types` (types consolidated into `@simplewebauthn/server`).
 
 ### Fixed
