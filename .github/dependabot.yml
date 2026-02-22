@@ -15,3 +15,18 @@ updates:
     target-branch: "develop-claude"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 32
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+      square:
+        patterns:
+          - "com.squareup.*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlinx*"
+      testing:
+        patterns:
+          - "org.mockito*"
+          - "junit*"
