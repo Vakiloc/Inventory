@@ -1,6 +1,7 @@
 package com.inventory.android.net
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PUT
 import retrofit2.http.POST
@@ -37,6 +38,9 @@ interface ApiService {
 
   @PUT("/api/items/{id}")
   suspend fun updateItem(@Path("id") id: Int, @Body req: ItemUpsertRequestDto): ItemResponseDto
+
+  @DELETE("/api/items/{id}")
+  suspend fun deleteItem(@Path("id") id: Int): ItemResponseDto
 
   @GET("/api/item-barcodes")
   suspend fun listItemBarcodesSince(@Query("since") since: Long): ItemBarcodesSinceResponse

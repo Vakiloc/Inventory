@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('inventory', {
 
 contextBridge.exposeInMainWorld('setup', {
   getConfigDefaults: () => ipcRenderer.invoke('setup:getConfigDefaults'),
+  checkExistingCerts: (options) => ipcRenderer.invoke('setup:checkExistingCerts', options),
   selectFile: (options) => ipcRenderer.invoke('setup:selectFile', options),
   validateAndSave: (config) => ipcRenderer.invoke('setup:validateAndSave', config),
   generateCert: (options) => ipcRenderer.invoke('setup:generateCert', options),

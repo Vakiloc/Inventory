@@ -71,11 +71,12 @@ android/local.properties
 # Testing & Coverage
 coverage/
 .nyc_output/
+inventory-app/desktop/test-artifacts/
 
 # Vim/Editor
 .swp
 
-# Claude -cwd
+# Claude code temporary files (these tmpclaude-*-cwd files are a bug in the current version of Claude)
 **/tmpclaude-*-cwd
 
 # Vite

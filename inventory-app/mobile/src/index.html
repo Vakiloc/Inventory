@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Inventory</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+
+    <!-- Screen: Pair -->
+    <div id="screen-pair" class="screen active">
+      <div class="screen-center">
+        <h1 class="app-title">Inventory</h1>
+        <p class="subtitle">Scan a QR code from the desktop app to pair this device.</p>
+        <button id="btn-scan-qr" class="btn primary large">Scan QR Code</button>
+        <div class="divider-text">or</div>
+        <button id="btn-paste-pair" class="btn large">Paste Pairing JSON</button>
+        <div id="pair-status" class="status-msg"></div>
+      </div>
+    </div>
+
+    <!-- Screen: Items (main) -->
+    <div id="screen-items" class="screen">
+      <header class="topbar">
+        <div class="brand">Inventory</div>
+        <span id="network-status" class="network-indicator online">Online</span>
+        <div class="grow"></div>
+        <button id="btn-sync" class="btn icon-btn" aria-label="Sync">&#x21BB;</button>
+        <button id="btn-scan" class="btn icon-btn" aria-label="Scan barcode">&#x1F4F7;</button>
+      </header>
+
+      <div class="search-bar">
+        <input id="search" class="input search-input" type="search" placeholder="Search name / barcode / serial" />
+      </div>
+
+      <div class="filter-row">
+        <select id="filter-category" class="select filter-select">
+          <option value="">All categories</option>
+        </select>
+        <select id="filter-location" class="select filter-select">
+          <option value="">All locations</option>
+        </select>
+      </div>
+
+      <div id="items-list" class="items-list"></div>
+
+      <div id="items-status" class="status-bar"></div>
+
+      <button id="btn-add-item" class="fab" aria-label="Add item">+</button>
+
+      <!-- Bottom navigation -->
+      <nav class="bottom-nav">
+        <button class="nav-item active" data-screen="screen-items">
+          <span class="nav-icon">&#x1F4E6;</span>
+          <span class="nav-label">Items</span>
+        </button>
+        <button class="nav-item" data-screen="screen-scan">
+          <span class="nav-icon">&#x1F4F7;</span>
+          <span class="nav-label">Scan</span>
+        </button>
+        <button class="nav-item" data-screen="screen-settings">
+          <span class="nav-icon">&#x2699;</span>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Screen: Scan -->
+    <div id="screen-scan" class="screen">
+      <header class="topbar">
+        <button id="scan-back" class="btn icon-btn" aria-label="Back">&#x276E;</button>
+        <div class="brand">Scan</div>
+      </header>
+      <div class="scan-container">
+        <video id="scan-video" autoplay playsinline></video>
+        <div id="scan-result" class="scan-result"></div>
+      </div>
+      <div class="scan-queue">
+        <h3>Scan Queue <span id="scan-queue-count" class="badge">0</span></h3>
+        <div id="scan-queue-list"></div>
+      </div>
+    </div>
+
+    <!-- Screen: Item Detail/Edit -->
+    <div id="screen-item-detail" class="screen">
+      <header class="topbar">
+        <button id="detail-back" class="btn icon-btn" aria-label="Back">&#x276E;</button>
+        <div class="brand" id="detail-title">Item</div>
+        <div class="grow"></div>
+        <button id="btn-delete-item" class="btn danger-text">Delete</button>
+      </header>
+      <form id="item-form" class="form-screen">
+        <input type="hidden" id="item-id" />
+
+        <label class="label">Name</label>
+        <input id="item-name" class="input" required />
+
+        <label class="label">Description</label>
+        <textarea id="item-description" class="input" rows="2"></textarea>
+
+        <div class="grid2">
+          <div>
+            <label class="label">Quantity</label>
+            <input id="item-quantity" class="input" type="number" min="0" value="1" />
+          </div>
+          <div>
+            <label class="label">Value</label>
+            <input id="item-value" class="input" type="number" step="0.01" />
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <label class="label">Category</label>
+            <select id="item-category" class="select"></select>
+          </div>
+          <div>
+            <label class="label">Location</label>
+            <select id="item-location" class="select"></select>
+          </div>
+        </div>
+
+        <label class="label">Barcode</label>
+        <div class="row">
+          <input id="item-barcode" class="input grow" />
+          <button id="btn-scan-barcode" class="btn" type="button">Scan</button>
+        </div>
+
+        <label class="label">Serial number</label>
+        <input id="item-serial" class="input" />
+
+        <label class="label">Purchase date</label>
+        <input id="item-purchase" class="input" type="date" />
+
+        <label class="label">Warranty info</label>
+        <input id="item-warranty" class="input" />
+
+        <div class="form-actions">
+          <button id="btn-save-item" class="btn primary large" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Screen: Settings -->
+    <div id="screen-settings" class="screen">
+      <header class="topbar">
+        <div class="brand">Settings</div>
+      </header>
+      <div class="settings-list">
+        <div class="setting-item">
+          <div class="setting-label">Server URL</div>
+          <div id="settings-server-url" class="setting-value">Not paired</div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Last sync</div>
+          <div id="settings-last-sync" class="setting-value">Never</div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Pending operations</div>
+          <div id="settings-pending" class="setting-value">0</div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Network</div>
+          <div id="settings-network" class="setting-value">Checking...</div>
+        </div>
+        <div class="setting-item">
+          <div class="setting-label">Inventory</div>
+          <select id="settings-inventory" class="select"></select>
+        </div>
+        <button id="btn-force-sync" class="btn large">Force Sync Now</button>
+        <button id="btn-unpair" class="btn danger large">Unpair Device</button>
+      </div>
+
+      <nav class="bottom-nav">
+        <button class="nav-item" data-screen="screen-items">
+          <span class="nav-icon">&#x1F4E6;</span>
+          <span class="nav-label">Items</span>
+        </button>
+        <button class="nav-item" data-screen="screen-scan">
+          <span class="nav-icon">&#x1F4F7;</span>
+          <span class="nav-label">Scan</span>
+        </button>
+        <button class="nav-item active" data-screen="screen-settings">
+          <span class="nav-icon">&#x2699;</span>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

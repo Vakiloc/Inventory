@@ -1,6 +1,12 @@
 {
   "name": "inventory-desktop",
-  "version": "0.1.5-claude",
+  "version": "0.1.4",
+  "description": "Household Inventory desktop application",
+  "author": {
+    "name": "Inventory",
+    "email": "inventory@localhost"
+  },
+  "homepage": "https://github.com/Vakiloc/Inventory",
   "private": true,
   "type": "module",
   "main": "src/main.js",
@@ -13,8 +19,11 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "stage:server": "node scripts/prepare-packaged-server.mjs",
-    "dist:win": "npm run build && npm run stage:server && node scripts/dist-win.mjs",
-    "setup:certs": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-certbot.ps1"
+    "dist": "npm run build && npm run stage:server && node scripts/dist.mjs",
+    "dist:win": "npm run build && npm run stage:server && node scripts/dist.mjs --win",
+    "dist:mac": "npm run build && npm run stage:server && node scripts/dist.mjs --mac",
+    "dist:linux": "npm run build && npm run stage:server && node scripts/dist.mjs --linux",
+    "setup:certs": "node scripts/setup-certbot.mjs"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.2.2",
@@ -31,19 +40,19 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/user-event": "^14.6.1",
     "concurrently": "^9.1.2",
-    "cross-env": "^10.1.0",
-    "electron": "^40.4.1",
-    "electron-builder": "^26.7.0",
-    "jsdom": "^28.1.0",
-    "vite": "^7.3.1",
-    "vitest": "^4.0.18",
-    "wait-on": "^9.0.4"
+    "cross-env": "^7.0.3",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.1",
+    "jsdom": "^24.1.3",
+    "vite": "^6.4.1",
+    "vitest": "^3.2.4",
+    "wait-on": "^7.2.0"
   },
   "build": {
     "appId": "com.inventory.desktop",
     "productName": "Inventory",
-    "artifactName": "inventory_v${version}.${ext}",
-    "electronVersion": "40.4.1",
+    "artifactName": "inventory_v${version}-${arch}.${ext}",
+    "electronVersion": "35.7.5",
     "directories": {
       "output": "dist-electron"
     },
@@ -71,6 +80,20 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
     }
   }
 }

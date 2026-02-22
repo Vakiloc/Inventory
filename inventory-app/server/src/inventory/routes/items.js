@@ -11,16 +11,15 @@ import {
 
 import { ItemBarcodeSchema, ItemUpsertSchema, nowMs } from '../../validation.js';
 import {
-  appendSyncLog,
   attachBarcodeToItem,
   createItem,
+  detachBarcodeFromItem,
   getItem,
   listItemBarcodes,
   listItemBarcodesSince,
   listItems,
   softDeleteItem,
-  updateItem,
-  upsertManyByIdLww
+  updateItem
 } from '../repo.js';
 
 export function createItemsRouter({ requireAuth, requireEdit }) {
@@ -135,7 +134,11 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
         typeof parsed.data.last_modified === 'number' &&
         parsed.data.last_modified < (existing.last_modified ?? 0)
       ) {
-        return sendOk(res, { error: 'conflict', serverItem: existing }, 409);
+        return sendOk(res, {
+          error: 'conflict',
+          serverItem: existing,
+          clientTimestamp: parsed.data.last_modified
+        }, 409);
       }
 
       const updated = updateItem(req.db, id, parsed.data);
@@ -157,30 +160,20 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
     })
   );
 
-  router.post(
-    '/sync',
+  router.delete(
+    '/items/:id/barcodes/:barcode',
     requireAuth,
     requireEdit,
     wrapRoute((req, res) => {
-      const body = req.body || {};
-      const since = typeof body.since === 'number' ? body.since : 0;
-      const incoming = Array.isArray(body.items) ? body.items : [];
+      const id = parseIntParam(req, res, 'id');
+      if (!id) return;
 
-      upsertManyByIdLww(req.db, incoming);
+      const barcode = decodeURIComponent(req.params.barcode || '').trim();
+      if (!barcode) return sendError(res, 400, 'barcode_required');
 
-      const items = listItems(req.db, { since, includeDeleted: true });
-      const deleted = items.filter(i => i.deleted === 1).map(i => i.item_id);
-
-      appendSyncLog(req.db, {
-        source: 'lan',
-        details: { since, pushed: incoming.length, pulled: items.length, deleted: deleted.length }
-      });
-
-      sendOk(res, {
-        serverTimeMs: nowMs(),
-        items,
-        deleted
-      });
+      const result = detachBarcodeFromItem(req.db, id, barcode);
+      if (result?.error === 'not_found') return sendError(res, 404, 'not_found');
+      sendOk(res, { ok: true, barcode, item_id: id });
     })
   );
 

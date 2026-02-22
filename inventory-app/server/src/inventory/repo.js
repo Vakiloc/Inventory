@@ -168,7 +168,7 @@ export function applyScanEventByBarcode(db, { event_id, barcode, delta, scanned_
   return tx();
 }
 
-export function applyScanEventByBarcodeChosenItem(db, { event_id, barcode, delta, scanned_at, item_id, override = false, attach = true }) {
+export function applyScanEventByBarcodeChosenItem(db, { event_id, barcode, delta, scanned_at, item_id }) {
   const eid = String(event_id || '').trim();
   const code = String(barcode || '').trim();
   const d = Number(delta ?? 1);
@@ -206,24 +206,6 @@ export function applyScanEventByBarcodeChosenItem(db, { event_id, barcode, delta
       return { status: 'not_found', event_id: eid };
     }
 
-    const matches = getItemsByBarcodeExact(db, code);
-    if (!override && !matches.some(i => i.item_id === chosenItemId)) {
-      insertScanEvent(db, {
-        event_id: eid,
-        barcode: code,
-        item_id: chosenItemId,
-        delta: d,
-        status: 'mismatch',
-        scanned_at: typeof scanned_at === 'number' ? scanned_at : null,
-        applied_at: appliedAt
-      });
-      return { status: 'mismatch', event_id: eid };
-    }
-
-    if (override && attach) {
-      forceAttachBarcodeToItem(db, chosenItemId, code);
-    }
-
     const updated = incrementItemQuantity(db, chosenItemId, d);
     insertScanEvent(db, {
       event_id: eid,
@@ -236,39 +218,6 @@ export function applyScanEventByBarcodeChosenItem(db, { event_id, barcode, delta
     });
 
     return { status: 'applied', event_id: eid, item: updated };
-  });
-
-  return tx();
-}
-
-export function forceAttachBarcodeToItem(db, itemId, barcode) {
-  const code = String(barcode || '').trim();
-  if (!code) throw new Error('barcode_required');
-
-  const tx = db.transaction(() => {
-    const item = getItem(db, itemId);
-    if (!item || item.deleted === 1) return { error: 'not_found' };
-
-    if (item.barcode === code) {
-      return { ok: true, barcode: code, item_id: itemId };
-    }
-
-    const existing = db
-      .prepare('SELECT barcode, item_id FROM item_barcodes WHERE barcode = ?')
-      .get(code);
-
-    if (existing && existing.item_id === itemId) {
-      return { ok: true, barcode: code, item_id: itemId };
-    }
-
-    const createdAt = nowMs();
-    if (existing && existing.item_id !== itemId) {
-      db.prepare('UPDATE item_barcodes SET item_id = ?, created_at = ? WHERE barcode = ?').run(itemId, createdAt, code);
-      return { ok: true, barcode: code, item_id: itemId, moved_from: existing.item_id };
-    }
-
-    db.prepare('INSERT OR IGNORE INTO item_barcodes(barcode, item_id) VALUES(?, ?)').run(code, itemId);
-    return { ok: true, barcode: code, item_id: itemId };
   });
 
   return tx();
@@ -373,6 +322,21 @@ export function attachBarcodeToItem(db, itemId, barcode) {
   return tx();
 }
 
+export function detachBarcodeFromItem(db, itemId, barcode) {
+  const code = String(barcode || '').trim();
+  if (!code) throw new Error('barcode_required');
+
+  const item = getItem(db, itemId);
+  if (!item || item.deleted === 1) return { error: 'not_found' };
+
+  const info = db
+    .prepare('DELETE FROM item_barcodes WHERE item_id = ? AND barcode = ?')
+    .run(itemId, code);
+
+  if (info.changes === 0) return { error: 'not_found' };
+  return { ok: true, barcode: code, item_id: itemId };
+}
+
 export function getItem(db, id) {
   return db.prepare('SELECT * FROM items WHERE item_id = ?').get(id);
 }
@@ -443,6 +407,7 @@ export function updateCategory(db, id, { name }) {
 }
 
 export function deleteCategory(db, id) {
+  db.prepare('UPDATE items SET category_id = NULL, last_modified = ? WHERE category_id = ?').run(nowMs(), id);
   db.prepare('DELETE FROM categories WHERE category_id = ?').run(id);
 }
 
@@ -467,6 +432,7 @@ export function updateLocation(db, id, { name, parent_id }) {
 }
 
 export function deleteLocation(db, id) {
+  db.prepare('UPDATE items SET location_id = NULL, last_modified = ? WHERE location_id = ?').run(nowMs(), id);
   db.prepare('DELETE FROM locations WHERE location_id = ?').run(id);
 }
 
@@ -532,7 +498,15 @@ export function importSnapshotLww(db, snapshot) {
     }
 
     if (Array.isArray(snapshot.items)) {
-      upsertManyByIdLww(db, snapshot.items);
+      // Validate referential integrity: nullify category/location IDs that don't exist
+      const validCatIds = new Set(db.prepare('SELECT category_id FROM categories').all().map(r => r.category_id));
+      const validLocIds = new Set(db.prepare('SELECT location_id FROM locations').all().map(r => r.location_id));
+      const cleaned = snapshot.items.map(it => ({
+        ...it,
+        category_id: (it.category_id != null && validCatIds.has(it.category_id)) ? it.category_id : null,
+        location_id: (it.location_id != null && validLocIds.has(it.location_id)) ? it.location_id : null
+      }));
+      upsertManyByIdLww(db, cleaned);
     }
 
     if (Array.isArray(snapshot.item_barcodes)) {

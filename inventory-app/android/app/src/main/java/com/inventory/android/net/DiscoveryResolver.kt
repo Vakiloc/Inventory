@@ -13,7 +13,7 @@ import kotlin.coroutines.resume
 
 object DiscoveryResolver {
     private const val TAG = "DiscoveryResolver"
-    private const val SERVICE_TYPE = "_http._tcp."
+    private const val SERVICE_TYPE = "_https._tcp."
 
     // sslip.io magic domain helper
     // 192.168.1.5 -> 192-168-1-5.sslip.io
@@ -76,7 +76,7 @@ object DiscoveryResolver {
                          override fun onDiscoveryStarted(regType: String) {}
 
                          override fun onServiceFound(service: NsdServiceInfo) {
-                             if (service.serviceType.contains("_http._tcp") && 
+                             if (service.serviceType.contains("_https._tcp") &&
                                  service.serviceName.startsWith(expectedServiceName, ignoreCase = true)) {
                                  
                                  nsdManager.resolveService(service, object : NsdManager.ResolveListener {
