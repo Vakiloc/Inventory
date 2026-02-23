@@ -1,6 +1,6 @@
 import express from 'express';
 import crypto from 'node:crypto';
-import { wrapRoute, sendOk, sendError } from '../../http.js';
+import { sendOk, sendError } from '../../http.js';
 import { requireLocalNetwork } from '../ipCheck.js';
 import * as webauthn from '../webauthn.js';
 import { getServerSecret, upsertDevice, consumePairingCode, validatePairingCode, updatePairingCodeStatus } from '../stateDb.js';
@@ -14,17 +14,17 @@ export function createWebAuthnRouter({ stateDb, cert }) {
   const router = express.Router();
 
   // Registration Cancel (by client)
-  router.post('/registration/cancel', wrapRoute(async (req, res) => {
+  router.post('/registration/cancel', async (req, res) => {
     const body = req.body || {};
     if (body.token) {
        console.log('[WebAuthn] Client cancelled registration for token', body.token);
        updatePairingCodeStatus(stateDb, body.token, 'cancelled');
     }
     sendOk(res, { ok: true });
-  }));
+  });
 
   // Registration Options (Restricted to Local Network)
-  router.post('/registration/options', requireLocalNetwork, wrapRoute(async (req, res) => {
+  router.post('/registration/options', requireLocalNetwork, async (req, res) => {
     console.log('[WebAuthn] /registration/options request');
     let user = { user_id: 1, username: 'Owner' };
 
@@ -51,10 +51,10 @@ export function createWebAuthnRouter({ stateDb, cert }) {
       console.error('[WebAuthn] Error generating registration options:', err);
       sendError(res, 500, 'registration_options_failed');
     }
-  }));
+  });
 
   // Registration Verify (Restricted to Local Network)
-  router.post('/registration/verify', requireLocalNetwork, wrapRoute(async (req, res) => {
+  router.post('/registration/verify', requireLocalNetwork, async (req, res) => {
     const { response, friendlyName, token } = req.body;
     console.log(`[WebAuthn] /registration/verify request. FriendlyName='${friendlyName}'`);
 
@@ -104,10 +104,10 @@ export function createWebAuthnRouter({ stateDb, cert }) {
       console.error('[WebAuthn] Registration verify exception:', err);
       sendError(res, 400, err.message);
     }
-  }));
+  });
 
   // Authentication Options
-  router.post('/authentication/options', wrapRoute(async (req, res) => {
+  router.post('/authentication/options', async (req, res) => {
     console.log('[WebAuthn] /authentication/options request');
     try {
       const options = await webauthn.generateAuthenticationOptions();
@@ -116,10 +116,10 @@ export function createWebAuthnRouter({ stateDb, cert }) {
       console.error('[WebAuthn] Auth options error:', err);
       sendError(res, 500, 'authentication_options_failed');
     }
-  }));
+  });
 
   // Authentication Verify
-  router.post('/authentication/verify', wrapRoute(async (req, res) => {
+  router.post('/authentication/verify', async (req, res) => {
     console.log('[WebAuthn] /authentication/verify request');
     const { response } = req.body;
 
@@ -148,7 +148,7 @@ export function createWebAuthnRouter({ stateDb, cert }) {
         console.error(err);
         sendError(res, 400, err.message);
     }
-  }));
+  });
 
   return router;
 }

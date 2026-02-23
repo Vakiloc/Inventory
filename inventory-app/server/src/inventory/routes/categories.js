@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { parseIntParam, parseJsonBody, sendError, sendOk, wrapRoute } from '../../http.js';
+import { parseIntParam, parseJsonBody, sendError, sendOk } from '../../http.js';
 import { CategorySchema } from '../../validation.js';
 import {
   createCategory,
@@ -18,16 +18,16 @@ export function createCategoriesRouter({ requireAuth, requireEdit }) {
   router.get(
     '/categories',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       sendOk(res, { categories: listCategories(req.db) });
-    })
+    }
   );
 
   router.post(
     '/categories',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const data = parseJsonBody(CategorySchema, req, res);
       if (!data) return;
       try {
@@ -38,14 +38,14 @@ export function createCategoriesRouter({ requireAuth, requireEdit }) {
         }
         throw err;
       }
-    })
+    }
   );
 
   router.put(
     '/categories/:id',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
 
@@ -62,19 +62,19 @@ export function createCategoriesRouter({ requireAuth, requireEdit }) {
         }
         throw err;
       }
-    })
+    }
   );
 
   router.delete(
     '/categories/:id',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
       deleteCategory(req.db, id);
       sendOk(res, { ok: true });
-    })
+    }
   );
 
   return router;

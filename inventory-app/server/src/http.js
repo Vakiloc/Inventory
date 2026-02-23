@@ -96,20 +96,6 @@ export function parseJsonBody(schema, req, res) {
   return parsed.data;
 }
 
-// ── Route Wrapper ──────────────────────────────────────────────────
-export function wrapRoute(handler) {
-  return function wrapped(req, res, next) {
-    try {
-      const result = handler(req, res, next);
-      if (result && typeof result.then === 'function') {
-        result.catch(next);
-      }
-    } catch (err) {
-      next(err);
-    }
-  };
-}
-
 // ── Error Handler ──────────────────────────────────────────────────
 export function installJsonErrorHandler(app) {
   app.use((err, req, res, next) => {

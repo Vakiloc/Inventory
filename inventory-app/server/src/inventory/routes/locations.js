@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { parseIntParam, parseJsonBody, sendError, sendOk, wrapRoute } from '../../http.js';
+import { parseIntParam, parseJsonBody, sendError, sendOk } from '../../http.js';
 import { LocationSchema } from '../../validation.js';
 import {
   createLocation,
@@ -18,16 +18,16 @@ export function createLocationsRouter({ requireAuth, requireEdit }) {
   router.get(
     '/locations',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       sendOk(res, { locations: listLocations(req.db) });
-    })
+    }
   );
 
   router.post(
     '/locations',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const data = parseJsonBody(LocationSchema, req, res);
       if (!data) return;
       try {
@@ -38,14 +38,14 @@ export function createLocationsRouter({ requireAuth, requireEdit }) {
         }
         throw err;
       }
-    })
+    }
   );
 
   router.put(
     '/locations/:id',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
 
@@ -62,19 +62,19 @@ export function createLocationsRouter({ requireAuth, requireEdit }) {
         }
         throw err;
       }
-    })
+    }
   );
 
   router.delete(
     '/locations/:id',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
       deleteLocation(req.db, id);
       sendOk(res, { ok: true });
-    })
+    }
   );
 
   return router;

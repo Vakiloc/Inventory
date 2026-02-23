@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { sendOk, wrapRoute } from '../../http.js';
+import { sendOk } from '../../http.js';
 import { listInventoriesFromRegistry } from '../inventories.js';
 
 export function createInventoriesRouter({ inventoryDbProvider, requireAuth }) {
@@ -12,13 +12,13 @@ export function createInventoriesRouter({ inventoryDbProvider, requireAuth }) {
   router.get(
     '/inventories',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const reg = inventoryDbProvider.getRegistry();
       sendOk(res, {
         activeId: reg?.activeId || null,
         inventories: listInventoriesFromRegistry(reg)
       });
-    })
+    }
   );
 
   return router;

@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { parseJsonBody, sendOk, wrapRoute } from '../../http.js';
+import { parseJsonBody, sendOk } from '../../http.js';
 import { BarcodeResolveSchema, ScanEventsApplySchema, nowMs } from '../../validation.js';
 import { applyScanEventByBarcode, applyScanEventByBarcodeChosenItem, getItemsByBarcodeExact } from '../repo.js';
 
@@ -40,7 +40,7 @@ export function createScansRouter({ requireAuth, requireEdit }) {
   router.post(
     '/scan/resolve',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const data = parseJsonBody(BarcodeResolveSchema, req, res);
       if (!data) return;
 
@@ -50,7 +50,7 @@ export function createScansRouter({ requireAuth, requireEdit }) {
       if (matches.length === 0) return sendOk(res, { action: 'not_found' });
       if (matches.length === 1) return sendOk(res, { action: 'found', item: matches[0] });
       return sendOk(res, { action: 'multiple', items: matches });
-    })
+    }
   );
 
   // Unified scan endpoint: accepts 1-500 scan events
@@ -59,13 +59,13 @@ export function createScansRouter({ requireAuth, requireEdit }) {
     '/scans',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const data = parseJsonBody(ScanEventsApplySchema, req, res);
       if (!data) return;
 
       const results = data.events.map(ev => processScanEvent(req.db, ev));
       sendOk(res, { serverTimeMs: nowMs(), results });
-    })
+    }
   );
 
   return router;

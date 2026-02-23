@@ -7,7 +7,6 @@ import {
   sendError,
   sendOk,
   sendValidationFailed,
-  wrapRoute
 } from '../../http.js';
 
 import { ItemBarcodeSchema, ItemUpsertSchema, nowMs } from '../../validation.js';
@@ -32,7 +31,7 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
   router.get(
     '/items',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const q = typeof req.query.q === 'string' ? req.query.q : undefined;
       const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
       const locationId = req.query.locationId ? Number(req.query.locationId) : undefined;
@@ -43,52 +42,52 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
       const deleted = items.filter(i => i.deleted === 1).map(i => i.item_id);
 
       sendOk(res, { items, deleted, serverTimeMs: nowMs() });
-    })
+    }
   );
 
   router.get(
     '/item-barcodes',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const since = req.query.since ? Number(req.query.since) : 0;
       sendOk(res, {
         serverTimeMs: nowMs(),
         barcodes: listItemBarcodesSince(req.db, Number.isFinite(since) ? since : 0)
       });
-    })
+    }
   );
 
   router.get(
     '/items/:id',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
 
       const item = getItem(req.db, id);
       if (!item) return sendError(res, 404, 'not_found');
       sendOk(res, { item });
-    })
+    }
   );
 
   router.get(
     '/items/:id/barcodes',
     requireAuth,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
 
       const item = getItem(req.db, id);
       if (!item) return sendError(res, 404, 'not_found');
       sendOk(res, { barcodes: listItemBarcodes(req.db, id) });
-    })
+    }
   );
 
   router.post(
     '/items/:id/barcodes',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const data = parseJsonBody(ItemBarcodeSchema, req, res);
       if (!data) return;
 
@@ -101,26 +100,26 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
         return sendOk(res, { error: 'barcode_in_use', item_id: result.item_id }, 409);
       }
       sendOk(res, { ok: true, barcode: result.barcode, item_id: result.item_id });
-    })
+    }
   );
 
   router.post(
     '/items',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const data = parseJsonBody(ItemUpsertSchema, req, res);
       if (!data) return;
       const created = createItem(req.db, data);
       sendOk(res, { item: created });
-    })
+    }
   );
 
   router.put(
     '/items/:id',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const parsed = ItemUpsertSchema.partial().safeParse(req.body);
       if (!parsed.success) return sendValidationFailed(res, flattenZodError(parsed.error));
 
@@ -144,28 +143,28 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
 
       const updated = updateItem(req.db, id, parsed.data);
       sendOk(res, { item: updated });
-    })
+    }
   );
 
   router.delete(
     '/items/:id',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
 
       const updated = softDeleteItem(req.db, id);
       if (!updated) return sendError(res, 404, 'not_found');
       sendOk(res, { item: updated });
-    })
+    }
   );
 
   router.delete(
     '/items/:id/barcodes/:barcode',
     requireAuth,
     requireEdit,
-    wrapRoute((req, res) => {
+    (req, res) => {
       const id = parseIntParam(req, res, 'id');
       if (!id) return;
 
@@ -175,7 +174,7 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
       const result = detachBarcodeFromItem(req.db, id, barcode);
       if (result?.error === 'not_found') return sendError(res, 404, 'not_found');
       sendOk(res, { ok: true, barcode, item_id: id });
-    })
+    }
   );
 
   return router;
