@@ -1,6 +1,6 @@
-require_relative '../../../node_modules/@capacitor/ios/scripts/pods_helpers'
+require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '13.0'
+platform :ios, '15.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires
@@ -9,14 +9,9 @@ use_frameworks!
 install! 'cocoapods', :disable_input_output_paths => true
 
 def capacitor_pods
-  pod 'Capacitor', :path => '../../../node_modules/@capacitor/ios'
-  pod 'CapacitorCordova', :path => '../../../node_modules/@capacitor/ios'
-  pod 'CapacitorMlkitBarcodeScanning', :path => '../../../node_modules/@capacitor-mlkit/barcode-scanning'
-  pod 'CapacitorApp', :path => '../../../node_modules/@capacitor/app'
-  pod 'CapacitorHaptics', :path => '../../../node_modules/@capacitor/haptics'
-  pod 'CapacitorNetwork', :path => '../../../node_modules/@capacitor/network'
-  pod 'CapacitorPreferences', :path => '../../../node_modules/@capacitor/preferences'
-  pod 'CapacitorStatusBar', :path => '../../../node_modules/@capacitor/status-bar'
+  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorNetwork', :path => '../../node_modules/@capacitor/network'
 end
 
 target 'App' do
