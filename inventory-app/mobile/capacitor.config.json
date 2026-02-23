@@ -1,0 +1,14 @@
+{
+  "appId": "com.inventory.mobile",
+  "appName": "Inventory",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    }
+  }
+}
