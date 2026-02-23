@@ -81,7 +81,7 @@ tasks.register<Copy>("copyReleaseApk") {
 }
 
 dependencies {
-  val composeBom = platform("androidx.compose:compose-bom:2026.01.01")
+  val composeBom = platform("androidx.compose:compose-bom:2026.02.00")
   implementation(composeBom)
   androidTestImplementation(composeBom)
 
@@ -125,9 +125,9 @@ dependencies {
 
   testImplementation("junit:junit:4.13.2")
 
-  androidTestImplementation("androidx.test.ext:junit:1.2.1")
-  androidTestImplementation("androidx.test:runner:1.6.2")
-  androidTestImplementation("androidx.test:rules:1.6.1")
+  androidTestImplementation("androidx.test.ext:junit:1.3.0")
+  androidTestImplementation("androidx.test:runner:1.7.0")
+  androidTestImplementation("androidx.test:rules:1.7.0")
   androidTestImplementation("androidx.work:work-testing:2.11.1")
 
   androidTestImplementation("org.mockito:mockito-android:5.10.0")
