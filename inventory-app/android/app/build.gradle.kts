@@ -81,7 +81,7 @@ tasks.register<Copy>("copyReleaseApk") {
 }
 
 dependencies {
-  val composeBom = platform("androidx.compose:compose-bom:2026.01.01")
+  val composeBom = platform("androidx.compose:compose-bom:2026.02.00")
   implementation(composeBom)
   androidTestImplementation(composeBom)
 
@@ -110,10 +110,10 @@ dependencies {
   ksp("androidx.room:room-compiler:2.8.4")
 
   // Networking
-  implementation("com.squareup.okhttp3:okhttp:4.12.0")
-  implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-  implementation("com.squareup.retrofit2:retrofit:2.11.0")
-  implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+  implementation("com.squareup.okhttp3:okhttp:5.3.2")
+  implementation("com.squareup.okhttp3:logging-interceptor:5.3.2")
+  implementation("com.squareup.retrofit2:retrofit:3.0.0")
+  implementation("com.squareup.retrofit2:converter-gson:3.0.0")
 
   // WebAuthn / Passkeys
   implementation("androidx.credentials:credentials:1.5.0")
@@ -125,11 +125,11 @@ dependencies {
 
   testImplementation("junit:junit:4.13.2")
 
-  androidTestImplementation("androidx.test.ext:junit:1.2.1")
+  androidTestImplementation("androidx.test.ext:junit:1.3.0")
   androidTestImplementation("androidx.test:runner:1.7.0")
-  androidTestImplementation("androidx.test:rules:1.6.1")
+  androidTestImplementation("androidx.test:rules:1.7.0")
   androidTestImplementation("androidx.work:work-testing:2.11.1")
 
-  androidTestImplementation("org.mockito:mockito-android:5.10.0")
-  androidTestImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+  androidTestImplementation("org.mockito:mockito-android:5.21.0")
+  androidTestImplementation("org.mockito.kotlin:mockito-kotlin:6.2.3")
 }
