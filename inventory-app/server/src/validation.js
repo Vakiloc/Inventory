@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const ItemUpsertSchema = z.object({
   name: z.string().min(1).max(500),
   description: z.string().max(5000).optional().nullable(),
-  quantity: z.number().int().min(0).max(999999).default(1),
+  quantity: z.number().int().min(0).max(999999).optional(),
   barcode: z.string().max(128).optional().nullable(),
   barcode_corrupted: z.number().int().min(0).max(1).optional().nullable(),
   category_id: z.number().int().optional().nullable(),
@@ -27,7 +27,7 @@ export const LocationSchema = z.object({
 const ScanDeltaSchema = z
   .number()
   .int()
-  .refine((d) => d !== 0 && Math.abs(d) <= 100, { message: 'delta must be non-zero and within +/-100' });
+  .refine((d) => d !== 0 && Math.abs(d) <= 100, 'delta must be non-zero and within +/-100');
 
 export const BarcodeResolveSchema = z.object({
   barcode: z.string().min(1).max(128)
@@ -40,7 +40,7 @@ export const ItemBarcodeSchema = z.object({
 export const ScanEventSchema = z.object({
   event_id: z.string().min(1).max(200),
   barcode: z.string().min(1).max(128),
-  delta: ScanDeltaSchema.default(1),
+  delta: ScanDeltaSchema.optional(),
   item_id: z.number().int().optional(),
   scanned_at: z.number().int().optional()
 });

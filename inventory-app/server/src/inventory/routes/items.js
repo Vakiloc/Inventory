@@ -1,6 +1,7 @@
 import express from 'express';
 
 import {
+  flattenZodError,
   parseIntParam,
   parseJsonBody,
   sendError,
@@ -121,7 +122,7 @@ export function createItemsRouter({ requireAuth, requireEdit }) {
     requireEdit,
     wrapRoute((req, res) => {
       const parsed = ItemUpsertSchema.partial().safeParse(req.body);
-      if (!parsed.success) return sendValidationFailed(res, parsed.error.flatten());
+      if (!parsed.success) return sendValidationFailed(res, flattenZodError(parsed.error));
 
       const id = parseIntParam(req, res, 'id');
       if (!id) return;

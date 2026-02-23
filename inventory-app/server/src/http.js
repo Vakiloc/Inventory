@@ -71,10 +71,26 @@ export function parseIntParam(req, res, name, { min = 1 } = {}) {
   return value;
 }
 
+// Flatten a ZodError into { formErrors, fieldErrors } — works with both Zod 3 and 4.
+// Zod 4 removed ZodError.flatten(), so we derive it from .issues directly.
+export function flattenZodError(zodError) {
+  const formErrors = [];
+  const fieldErrors = {};
+  for (const issue of zodError.issues) {
+    if (issue.path.length === 0) {
+      formErrors.push(issue.message);
+    } else {
+      const key = issue.path.join('.');
+      (fieldErrors[key] ??= []).push(issue.message);
+    }
+  }
+  return { formErrors, fieldErrors };
+}
+
 export function parseJsonBody(schema, req, res) {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
-    sendValidationFailed(res, parsed.error.flatten());
+    sendValidationFailed(res, flattenZodError(parsed.error));
     return null;
   }
   return parsed.data;
