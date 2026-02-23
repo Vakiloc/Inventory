@@ -15,7 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,11 +43,11 @@ fun PairingManagementScreen(
   val status = remember { mutableStateOf(I18n.t(context, "status.ready")) }
   val inventories = remember { mutableStateOf<List<InventoryDto>>(emptyList()) }
 
-  val localePref = prefs.localeFlow.collectAsState(initial = null)
+  val localePref = prefs.localeFlow.collectAsStateWithLifecycle(initialValue = null)
   val currentLocale = (localePref.value?.trim()?.takeIf { it.isNotBlank() } ?: java.util.Locale.getDefault().language).lowercase()
 
-  val activeInventoryId = prefs.inventoryIdFlow.collectAsState(initial = null)
-  val baseUrl = prefs.baseUrlFlow.collectAsState(initial = null)
+  val activeInventoryId = prefs.inventoryIdFlow.collectAsStateWithLifecycle(initialValue = null)
+  val baseUrl = prefs.baseUrlFlow.collectAsStateWithLifecycle(initialValue = null)
 
   fun refresh() {
     scope.launch {

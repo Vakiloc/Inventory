@@ -16,7 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -33,7 +33,7 @@ fun ItemList(query: String, categoryId: Int?, locationId: Int?) {
 
   val q = query.trim().takeIf { it.isNotBlank() }?.let { "%$it%" }
   val itemsState = db.itemsDao().observeFiltered(q, categoryId, locationId)
-    .collectAsState(initial = emptyList())
+    .collectAsStateWithLifecycle(initialValue = emptyList())
   val selected = remember { mutableStateOf<ItemEntity?>(null) }
 
   LazyColumn {

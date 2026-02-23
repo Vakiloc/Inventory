@@ -13,7 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -68,7 +68,7 @@ fun InventoryApp() {
   }
   val repo = remember { InventoryRepository(db, prefs, apiClient) }
 
-  val appLocale = prefs.localeFlow.collectAsState(initial = null)
+  val appLocale = prefs.localeFlow.collectAsStateWithLifecycle(initialValue = null)
   val localeOverride = appLocale.value?.trim()?.takeIf { it.isNotBlank() }
   val effectiveLocale = localeOverride ?: Locale.getDefault().language.lowercase()
 

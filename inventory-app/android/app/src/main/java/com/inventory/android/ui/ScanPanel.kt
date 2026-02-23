@@ -41,7 +41,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -781,8 +781,8 @@ private fun ItemFormDialog(
   onSave: () -> Unit,
   saving: Boolean = false
 ) {
-  val categories = db.categoriesDao().observeAll().collectAsState(initial = emptyList())
-  val locations = db.locationsDao().observeAll().collectAsState(initial = emptyList())
+  val categories = db.categoriesDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+  val locations = db.locationsDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
   val scope = rememberCoroutineScope()
 
   val showNewCategory = rememberSaveable { mutableStateOf(false) }

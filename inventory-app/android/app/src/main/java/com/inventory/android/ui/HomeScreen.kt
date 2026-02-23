@@ -22,7 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -211,12 +211,12 @@ fun HomeScreen(
 
   val q = search.value.trim().takeIf { it.isNotBlank() }?.let { "%$it%" }
   val itemsState = db.itemsDao().observeFiltered(q, selectedCategoryId.value, selectedLocationId.value)
-    .collectAsState(initial = emptyList())
+    .collectAsStateWithLifecycle(initialValue = emptyList())
 
   val searchHasFocus = remember { mutableStateOf(false) }
   val searchExpanded = remember { mutableStateOf(false) }
   val suggestionsFlow = remember(q) { if (q == null) flowOf(emptyList()) else db.itemsDao().observeSearch(q) }
-  val suggestions = suggestionsFlow.collectAsState(initial = emptyList())
+  val suggestions = suggestionsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
 
   Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -454,8 +454,8 @@ fun HomeScreen(
   // Item create/edit form dialog
   if (showItemForm.value) {
     val isEdit = editingItem.value != null
-    val categories = db.categoriesDao().observeAll().collectAsState(initial = emptyList())
-    val locations = db.locationsDao().observeAll().collectAsState(initial = emptyList())
+    val categories = db.categoriesDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+    val locations = db.locationsDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
 
     AlertDialog(
       onDismissRequest = {
@@ -730,8 +730,8 @@ private fun FiltersRow(
   selectedLocationId: Int?,
   onLocationChange: (Int?) -> Unit
 ) {
-  val categories = db.categoriesDao().observeAll().collectAsState(initial = emptyList())
-  val locations = db.locationsDao().observeAll().collectAsState(initial = emptyList())
+  val categories = db.categoriesDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
+  val locations = db.locationsDao().observeAll().collectAsStateWithLifecycle(initialValue = emptyList())
 
   val catExpanded = remember { mutableStateOf(false) }
   val locExpanded = remember { mutableStateOf(false) }
