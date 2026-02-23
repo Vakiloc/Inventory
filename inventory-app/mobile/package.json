@@ -16,20 +16,20 @@
     "cap:run:android": "npx cap run android"
   },
   "dependencies": {
-    "@capacitor-mlkit/barcode-scanning": "^6.0.0",
-    "@capacitor/android": "^6.2.1",
-    "@capacitor/app": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/haptics": "^6.0.0",
-    "@capacitor/ios": "^6.2.1",
-    "@capacitor/network": "^6.0.0",
-    "@capacitor/preferences": "^6.0.0",
-    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor-mlkit/barcode-scanning": "^8.0.1",
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.1.0",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.1",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0",
-    "vite": "^6.4.1"
+    "@capacitor/cli": "^8.1.0",
+    "vite": "^7.3.1"
   }
 }
