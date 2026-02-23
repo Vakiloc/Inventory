@@ -30,7 +30,14 @@ export function createCategoriesRouter({ requireAuth, requireEdit }) {
     wrapRoute((req, res) => {
       const data = parseJsonBody(CategorySchema, req, res);
       if (!data) return;
-      sendOk(res, { category: createCategory(req.db, data) });
+      try {
+        sendOk(res, { category: createCategory(req.db, data) });
+      } catch (err) {
+        if (String(err?.message || err).includes('UNIQUE')) {
+          return sendError(res, 409, 'Category name already exists');
+        }
+        throw err;
+      }
     })
   );
 

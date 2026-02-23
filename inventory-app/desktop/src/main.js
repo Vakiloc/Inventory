@@ -5,6 +5,8 @@ import { spawn, execSync, exec } from 'node:child_process';
 import os from 'node:os';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import http from 'node:http';
+import https from 'node:https';
 import { Bonjour } from 'bonjour-service';
 import { createRequire } from 'node:module';
 import { issueServerCert, getRootCertPath } from './keystore.js';
@@ -101,7 +103,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SERVER_PORT = Number(process.env.INVENTORY_PORT || 443);
-const SERVER_URL = process.env.INVENTORY_SERVER_URL || `https://localhost:${SERVER_PORT}`;
+let SERVER_URL = process.env.INVENTORY_SERVER_URL || `https://localhost:${SERVER_PORT}`;
 
 let serverProc;
 let serverProcDataDir = null;
@@ -303,18 +305,78 @@ function loadUserConfig() {
   return {};
 }
 
-async function isServerReachable(baseUrl) {
-  const url = `${baseUrl.replace(/\/$/, '')}/api/ping`;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 750);
+/**
+ * Low-level probe: tries to reach baseUrl/api/ping using the protocol
+ * implied by the URL (http or https).
+ */
+async function tryReach(baseUrl) {
+  const parsed = new URL(`${baseUrl.replace(/\/$/, '')}/api/ping`);
+  const mod = parsed.protocol === 'https:' ? https : http;
 
+  return new Promise((resolve) => {
+    const req = mod.request({
+      hostname: parsed.hostname,
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path: parsed.pathname,
+      method: 'GET',
+      rejectUnauthorized: false,
+      timeout: 750
+    }, (res) => {
+      res.resume();
+      resolve(res.statusCode >= 200 && res.statusCode < 300);
+    });
+
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
+
+async function isServerReachable(baseUrl) {
+  return tryReach(baseUrl);
+}
+
+/**
+ * Tries the given URL first, then falls back to HTTP if the URL was HTTPS.
+ * Returns the working URL or null.
+ */
+async function probeServerUrl(baseUrl) {
+  if (await tryReach(baseUrl)) return baseUrl;
+  if (baseUrl.startsWith('https://')) {
+    const httpUrl = baseUrl.replace(/^https:/, 'http:');
+    if (await tryReach(httpUrl)) return httpUrl;
+  }
+  return null;
+}
+
+/**
+ * Polls until the server becomes reachable, trying HTTPS then HTTP.
+ * Returns the working URL or null if the server never responds.
+ */
+async function waitForServer(url, { maxAttempts = 40, intervalMs = 150 } = {}) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const reachableUrl = await probeServerUrl(url);
+    if (reachableUrl) return reachableUrl;
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  return null;
+}
+
+async function updateDuckDns(hostnames, token, ip) {
+  const subNames = hostnames
+    .map(h => h.replace(/\.duckdns\.org$/, ''))
+    .join(',');
+  const url = `https://www.duckdns.org/update?domains=${subNames}&token=${token}&ip=${ip}`;
   try {
-    const res = await fetch(url, { signal: controller.signal });
-    return res.ok;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timeout);
+    const res = await fetch(url);
+    const text = await res.text();
+    if (text.trim() === 'OK') {
+      console.log(`[DuckDNS] Updated ${subNames} -> ${ip}`);
+    } else {
+      console.warn(`[DuckDNS] Update failed for ${subNames}: ${text.trim()}`);
+    }
+  } catch (err) {
+    console.warn(`[DuckDNS] API request failed: ${err.message}`);
   }
 }
 
@@ -347,6 +409,27 @@ async function startServerIfLocal() {
   const userConfig = loadUserConfig();
   const useCustomCert = userConfig.httpsKey && userConfig.httpsCert;
 
+  // Update DuckDNS A records with current LAN IP on every startup
+  if (userConfig.hostname?.endsWith('.duckdns.org')) {
+    let duckToken = userConfig.duckdnsToken;
+    if (!duckToken) {
+      // Fallback: read token from certbot credentials file (pre-existing installs)
+      const iniPath = path.join(app.getPath('userData'), '.inventory-certbot', 'credentials', 'duckdns.ini');
+      try {
+        const ini = fs.readFileSync(iniPath, 'utf8');
+        const match = ini.match(/dns_duckdns_token\s*=\s*(\S+)/);
+        if (match) duckToken = match[1];
+      } catch { /* ignore */ }
+    }
+    if (duckToken) {
+      const duckHosts = [userConfig.hostname];
+      if (userConfig.idpHostname?.endsWith('.duckdns.org')) {
+        duckHosts.push(userConfig.idpHostname);
+      }
+      updateDuckDns(duckHosts, duckToken, localIp);
+    }
+  }
+
   if (useCustomCert) {
     console.log('[Main] Using custom SSL keys from config');
   } else {
@@ -368,8 +451,6 @@ async function startServerIfLocal() {
         // For now, let's throw/return to avoid unsecure connection confusion.
         return;
     }
-  } else {
-    console.log('[Main] Using custom SSL keys from config');
   }
 
   // Option A packaging: in packaged builds we run the server under Electron's Node
@@ -417,28 +498,39 @@ async function startServerIfLocal() {
     // eslint-disable-next-line no-console
     console.log('server exited', code);
   });
-  
+
+  // Wait for the server to become reachable before proceeding.
+  const reachableUrl = await waitForServer(SERVER_URL);
+  if (!reachableUrl) {
+    // eslint-disable-next-line no-console
+    console.error('[Main] Server did not become reachable within timeout');
+  } else if (reachableUrl !== SERVER_URL) {
+    // eslint-disable-next-line no-console
+    console.warn(`[Main] Server reachable at ${reachableUrl} instead of expected ${SERVER_URL}`);
+    SERVER_URL = reachableUrl;
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(`[Main] Server confirmed reachable at ${SERVER_URL}`);
+  }
+
   // Publish mDNS service to ensure .local resolution works on Android
   try {
      const hostname = os.hostname();
      const name = `inventory-${hostname}`; // Ensure unique-ish name
-     const type = 'http';
-     
-     // Advertise the service. This often triggers the OS or the library to respond to mDNS queries.
-     // Windows 10+ usually handles mDNS if enabled, but this library provides an explicit responder
-     // if the OS is not doing it for us.
-     // Note: We are publishing the *service* _http._tcp.local.
-     // Android NsdManager can discover this.
-     // Standard DNS resolver on Android (getByName) relies on the Responder being active.
-     
+     const type = 'https';
+     const serviceHost = userConfig.hostname || `${hostname}.local`;
+
+     // Advertise the HTTPS service via mDNS so Android can discover it.
+     // When DuckDNS is configured, advertise the FQDN so clients use the correct hostname.
+
      if (bonjourInstance) {
         bonjourInstance.unpublishAll();
         bonjourInstance.destroy();
      }
-     
+
      bonjourInstance = new Bonjour();
-     bonjourInstance.publish({ name, type, port: SERVER_PORT, host: `${hostname}.local` });
-     console.log(`[Bonjour] Published service: ${name}._${type}._tcp.local -> ${hostname}.local:${SERVER_PORT}`);
+     bonjourInstance.publish({ name, type, port: SERVER_PORT, host: serviceHost });
+     console.log(`[Bonjour] Published service: ${name}._${type}._tcp.local -> ${serviceHost}:${SERVER_PORT}`);
   } catch (err) {
       console.error('[Bonjour] Failed to publish service:', err);
   }
@@ -525,27 +617,32 @@ async function restartLocalServerWithDataDir(dataDir) {
   const userConfig = loadUserConfig();
   const useCustomCert = userConfig.httpsKey && userConfig.httpsCert;
 
-  const ksPath = path.join(app.getPath('userData'), 'keystore');
-  const certPath = useCustomCert ? userConfig.httpsCert : path.join(ksPath, 'cert.pem');
-  const keyPath = useCustomCert ? userConfig.httpsKey : path.join(ksPath, 'key.pem');
+  const tempPfxPath = path.join(app.getPath('userData'), 'temp_server.pfx');
+  const localIp = detectLocalIp();
+  const sslipDomain = getSslipDomain(localIp);
 
   serverProcDataDir = dataDir;
+
+  const env = configureServerEnv({
+    processEnv: process.env,
+    isPackaged: app.isPackaged,
+    serverPort: SERVER_PORT,
+    dataDir,
+    registryPath: registryPath(),
+    serverStateDir: app.getPath('userData'),
+    pfxPath: useCustomCert ? undefined : tempPfxPath,
+    pfxPass: '',
+    sslCert: useCustomCert ? userConfig.httpsCert : undefined,
+    sslKey: useCustomCert ? userConfig.httpsKey : undefined,
+    rootCaPath: getRootCertPath(),
+    androidDebugSha256: process.env.ANDROID_DEBUG_SHA256,
+    webAuthnRpId: ngrokUrl ? new URL(ngrokUrl).hostname : (userConfig.idpHostname || userConfig.hostname || sslipDomain),
+    nodeExec,
+    execPath: process.execPath
+  });
+
   serverProc = spawn(nodeExec, [serverEntry], {
-    env: {
-      ...process.env,
-      NODE_ENV: app.isPackaged ? 'production' : (process.env.NODE_ENV || undefined),
-      PORT: String(SERVER_PORT),
-      INVENTORY_DATA_DIR: dataDir,
-      INVENTORY_REGISTRY_PATH: registryPath(),
-      INVENTORY_SERVER_STATE_DIR: app.getPath('userData'),
-      HTTPS_CERT_PATH: certPath,
-      HTTPS_KEY_PATH: keyPath,
-      IDP_HOSTNAME: userConfig.idpHostname,
-      APP_HOSTNAME: userConfig.appHostname,
-      ANDROID_DEBUG_SHA256: process.env.ANDROID_DEBUG_SHA256, // Pass it down
-      WEBAUTHN_RP_ID: ngrokUrl ? new URL(ngrokUrl).hostname : (userConfig.idpHostname || userConfig.hostname || undefined),
-      ...(nodeExec === process.execPath ? { ELECTRON_RUN_AS_NODE: '1' } : {})
-    },
+    env,
     cwd: serverRoot,
     stdio: 'inherit',
     windowsHide: true
@@ -562,26 +659,20 @@ async function restartLocalServerWithDataDir(dataDir) {
   });
 
   // Wait briefly for the new server to come up.
-  const started = await new Promise((resolve) => {
-    let attempts = 0;
-    const interval = setInterval(async () => {
-      attempts++;
-      if (await isServerReachable(SERVER_URL)) {
-        clearInterval(interval);
-        // eslint-disable-next-line no-console
-        console.log('electron: server became reachable');
-        return resolve(true);
-      }
-      if (attempts >= 40) { // Increased timeout to 6s
-        clearInterval(interval);
-        // eslint-disable-next-line no-console
-        console.error('electron: server failed to become reachable');
-        return resolve(false);
-      }
-    }, 150);
-  });
+  const reachableUrl = await waitForServer(SERVER_URL);
+  if (!reachableUrl) {
+    // eslint-disable-next-line no-console
+    console.error('electron: server failed to become reachable');
+    return { error: 'start_failed' };
+  }
 
-  if (!started) return { error: 'start_failed' };
+  if (reachableUrl !== SERVER_URL) {
+    // eslint-disable-next-line no-console
+    console.warn(`[Main] Restarted server reachable at ${reachableUrl} instead of ${SERVER_URL}`);
+    SERVER_URL = reachableUrl;
+  }
+  // eslint-disable-next-line no-console
+  console.log('electron: server became reachable');
   return { ok: true };
 }
 
@@ -717,20 +808,31 @@ function needsSetup() {
 
 function detectCertDefaults() {
   const possibleRoots = [];
+
+  // Check app-local certbot output (new location under userData)
+  const userDataCertbot = path.join(app.getPath('userData'), '.inventory-certbot', 'config', 'live');
+  possibleRoots.push(userDataCertbot);
+
+  // Check legacy certbot output (old location under USERPROFILE)
+  const legacyCertbot = path.join(os.homedir(), '.inventory-certbot', 'config', 'live');
+  if (legacyCertbot !== userDataCertbot) possibleRoots.push(legacyCertbot);
+
+  // System-wide certbot locations
   if (process.platform === 'win32') possibleRoots.push('C:\\Certbot\\live');
+  else if (process.platform === 'darwin') possibleRoots.push('/etc/letsencrypt/live', '/usr/local/etc/letsencrypt/live');
   else if (process.platform === 'linux') possibleRoots.push('/etc/letsencrypt/live');
-  
+
   for (const root of possibleRoots) {
     if (fs.existsSync(root)) {
         try {
             const domains = fs.readdirSync(root).filter(n => fs.statSync(path.join(root, n)).isDirectory());
             if (domains.length > 0) {
                 const domain = domains[0];
-                return {
-                    hostname: domain,
-                    key: path.join(root, domain, 'privkey.pem'),
-                    cert: path.join(root, domain, 'fullchain.pem')
-                };
+                const keyPath = path.join(root, domain, 'privkey.pem');
+                const certPath = path.join(root, domain, 'fullchain.pem');
+                if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+                    return { hostname: domain, key: keyPath, cert: certPath };
+                }
             }
         } catch(e) { /* ignore */ }
     }
@@ -764,17 +866,81 @@ app.whenReady().then(async () => {
   // 2. Setup Check
   if (needsSetup()) {
     ipcMain.handle('setup:getConfigDefaults', async () => detectCertDefaults());
-    
+
+    ipcMain.handle('setup:checkExistingCerts', async (e, { subdomains }) => {
+        const normalizedSubs = (subdomains || []).map(s =>
+            s.includes('.duckdns.org') ? s : `${s}.duckdns.org`
+        );
+        if (normalizedSubs.length === 0) return { found: false };
+
+        const mainDomain = normalizedSubs[0];
+        const baseName = mainDomain.replace(/\.duckdns\.org$/, '');
+        const searchRoots = [
+            path.join(app.getPath('userData'), '.inventory-certbot', 'config', 'live'),
+            path.join(os.homedir(), '.inventory-certbot', 'config', 'live')
+        ];
+
+        for (const root of [...new Set(searchRoots)]) {
+            if (!fs.existsSync(root)) continue;
+
+            // Scan all directories: exact match, without suffix, and -0001 variants
+            let dirs;
+            try { dirs = fs.readdirSync(root).filter(n => fs.statSync(path.join(root, n)).isDirectory()); }
+            catch { continue; }
+
+            // Prioritize exact match, then prefix matches (handles -0001 suffixes)
+            const sorted = dirs.sort((a, b) => {
+                const aExact = a === mainDomain || a === baseName;
+                const bExact = b === mainDomain || b === baseName;
+                if (aExact && !bExact) return -1;
+                if (!aExact && bExact) return 1;
+                return 0;
+            }).filter(d => d === mainDomain || d === baseName || d.startsWith(mainDomain) || d.startsWith(baseName));
+
+            for (const domain of sorted) {
+                const certDir = path.join(root, domain);
+                const keyPath = path.join(certDir, 'privkey.pem');
+                const certPath = path.join(certDir, 'fullchain.pem');
+
+                if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) continue;
+
+                try {
+                    const certPem = fs.readFileSync(certPath, 'utf8');
+                    const x509 = new crypto.X509Certificate(certPem);
+                    const expiresAt = new Date(x509.validTo);
+                    const daysLeft = Math.floor((expiresAt - Date.now()) / 86400000);
+
+                    if (daysLeft <= 0) continue; // expired
+
+                    const result = {
+                        found: true,
+                        hostname: domain,
+                        key: keyPath,
+                        cert: certPath,
+                        expiresAt: expiresAt.toISOString(),
+                        daysLeft,
+                        needsRenewal: daysLeft < 30
+                    };
+                    if (normalizedSubs.length > 1) result.idpHostname = normalizedSubs[1];
+                    return result;
+                } catch (err) {
+                    console.warn('[Setup] Could not parse cert at', certPath, err.message);
+                }
+            }
+        }
+        return { found: false };
+    });
+
     ipcMain.handle('setup:selectFile', async (e, opts) => {
         const { canceled, filePaths } = await dialog.showOpenDialog({ ...opts, properties: ['openFile'] });
         return canceled ? null : filePaths[0];
     });
 
     ipcMain.handle('setup:generateCert', async (e, args) => {
-        // Run PowerShell script
-        const scriptPath = path.join(__dirname, '..', 'scripts', 'setup-certbot.ps1');
+        // Run cross-platform Node.js certbot script
+        const scriptPath = path.join(__dirname, '..', 'scripts', 'setup-certbot.mjs');
         const resultFile = path.join(app.getPath('temp'), `setup-result-${Date.now()}.json`);
-        
+
         let { subdomains, token, email } = args;
 
         // Backward compatibility for stale renderers
@@ -786,104 +952,96 @@ app.whenReady().then(async () => {
         if (!subdomains || !Array.isArray(subdomains)) {
              return { success: false, message: "Invalid parameters: subdomains missing" };
         }
-        
+
         return new Promise((resolve) => {
             const sender = e.sender;
             const log = (msg) => sender.send('setup:log', msg);
-            
-            // Format for display
-            const displayDomains = subdomains.map(d => d.includes('.duckdns.org') ? d : `${d}.duckdns.org`).join(', ');
-            log(`Prompting for Admin privileges to run Certbot for: ${displayDomains}...`);
 
-            log(`(A new PowerShell window will open. Please accept the UAC prompt.)`);
-            
-            // Normalize domains: ensure .duckdns.org suffix before passing to PowerShell
-            // (defends against Start-Process -ArgumentList mangling the array)
+            // Normalize domains
             const normalizedSubs = subdomains.map(s =>
                 s.includes('.duckdns.org') ? s : `${s}.duckdns.org`
             );
-            const subsArg = normalizedSubs.map(s => `"${s}"`).join(',');
+            const displayDomains = normalizedSubs.join(', ');
+            log(`Running Certbot for: ${displayDomains}...`);
 
-            const argsParts = [
-                '-NoProfile',
-                '-ExecutionPolicy', 'Bypass',
-                '-File', `"${scriptPath}"`,
-                '-Subdomains', subsArg,
-                '-Token', `"${token}"`,
-                '-Email', `"${email}"`,
-                '-ResultFile', `"${resultFile}"`
+            const scriptArgs = [
+                scriptPath,
+                `--subdomains=${normalizedSubs.join(',')}`,
+                `--token=${token}`,
+                `--email=${email}`,
+                `--result-file=${resultFile}`,
+                `--app-data-dir=${app.getPath('userData')}`,
+                `--web-app-port=${SERVER_PORT}`
             ];
 
-            const psArgs = argsParts.join(' ');
+            log(`Starting certificate setup...`);
 
-            const cmd = `Start-Process powershell -Verb RunAs -ArgumentList '${psArgs}'`;
-            
-            log(`Please watch the external PowerShell window for progress.`);
-            
-            exec(`powershell "${cmd}"`, (err) => {
-                if (err) {
-                    log('ERROR: Failed to launch elevated process: ' + err.message);
-                    resolve({ success: false, message: 'Failed to launch process' });
-                    return;
-                }
-                
-                // Poll for result file
-                let attempts = 0;
-                const maxAttempts = 180; // 3 minutes
-                const interval = setInterval(() => {
-                    attempts++;
-                    if (fs.existsSync(resultFile)) {
-                        clearInterval(interval);
-                        try {
-                            const raw = fs.readFileSync(resultFile, 'utf8');
-                            const data = JSON.parse(raw);
-                            fs.unlinkSync(resultFile); // Cleanup
-                            
-                            if (data.success) {
-                                log('Script reported success. Verifying certificate paths...');
+            const child = spawn(process.execPath, scriptArgs, {
+                stdio: ['pipe', 'pipe', 'pipe'],
+                env: { ...process.env }
+            });
 
-                                // Double-check paths exist (catches PowerShell script bugs)
-                                if (!fs.existsSync(data.result.key)) {
-                                    log('ERROR: Key path does not exist: ' + data.result.key);
-                                    resolve({
-                                        success: false,
-                                        message: 'Certificate key file not accessible',
-                                        details: `Expected: ${data.result.key}\n\nThe PowerShell script reported success but the file cannot be found.`
-                                    });
-                                    return;
-                                }
+            child.stdout.on('data', (data) => log(data.toString().trim()));
+            child.stderr.on('data', (data) => log(data.toString().trim()));
 
-                                if (!fs.existsSync(data.result.cert)) {
-                                    log('ERROR: Cert path does not exist: ' + data.result.cert);
-                                    resolve({
-                                        success: false,
-                                        message: 'Certificate file not accessible',
-                                        details: `Expected: ${data.result.cert}\n\nThe PowerShell script reported success but the file cannot be found.`
-                                    });
-                                    return;
-                                }
+            child.on('exit', (code) => {
+                // Read result file
+                if (fs.existsSync(resultFile)) {
+                    try {
+                        const raw = fs.readFileSync(resultFile, 'utf8');
+                        const data = JSON.parse(raw);
+                        fs.unlinkSync(resultFile);
 
-                                log('Certificate paths verified.');
-                                resolve({ success: true, result: data.result });
-                            } else {
-                                log('Script reported error: ' + data.message);
-                                if (data.output) {
-                                  log('--- Script Output ---');
-                                  log(data.output);
-                                  log('---------------------');
-                                }
-                                resolve({ success: false, message: data.message });
+                        if (data.success) {
+                            log('Script reported success. Verifying certificate paths...');
+
+                            if (!fs.existsSync(data.result.key)) {
+                                log('ERROR: Key path does not exist: ' + data.result.key);
+                                resolve({
+                                    success: false,
+                                    message: 'Certificate key file not accessible',
+                                    details: `Expected: ${data.result.key}`
+                                });
+                                return;
                             }
-                        } catch (e) {
-                            log('Error reading result file: ' + e.message);
-                            resolve({ success: false, message: 'Invalid result file content' });
+
+                            if (!fs.existsSync(data.result.cert)) {
+                                log('ERROR: Cert path does not exist: ' + data.result.cert);
+                                resolve({
+                                    success: false,
+                                    message: 'Certificate file not accessible',
+                                    details: `Expected: ${data.result.cert}`
+                                });
+                                return;
+                            }
+
+                            log('Certificate paths verified.');
+                            resolve({ success: true, result: data.result });
+                        } else {
+                            log('Script reported error: ' + data.message);
+                            if (data.output) {
+                              log('--- Script Output ---');
+                              log(data.output);
+                              log('---------------------');
+                            }
+                            resolve({ success: false, message: data.message });
                         }
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        log('Timed out waiting for script execution.');
-                        resolve({ success: false, message: 'Timeout' });
+                    } catch (e) {
+                        log('Error reading result file: ' + e.message);
+                        resolve({ success: false, message: 'Invalid result file content' });
                     }
-                }, 1000);
+                } else if (code !== 0) {
+                    log(`Certbot script exited with code ${code}`);
+                    resolve({ success: false, message: `Script exited with code ${code}` });
+                } else {
+                    log('Script completed but no result file found.');
+                    resolve({ success: false, message: 'No result file produced' });
+                }
+            });
+
+            child.on('error', (err) => {
+                log('ERROR: Failed to launch certbot script: ' + err.message);
+                resolve({ success: false, message: 'Failed to launch process' });
             });
         });
     });
@@ -914,7 +1072,8 @@ app.whenReady().then(async () => {
                 hostname: config.hostname,
                 idpHostname: config.idpHostname,
                 httpsKey: config.httpsKey,
-                httpsCert: config.httpsCert
+                httpsCert: config.httpsCert,
+                ...(config.duckdnsToken ? { duckdnsToken: config.duckdnsToken } : {})
             };
             fs.writeFileSync(path.join(app.getPath('userData'), 'config.json'), JSON.stringify(saveData, null, 2));
             

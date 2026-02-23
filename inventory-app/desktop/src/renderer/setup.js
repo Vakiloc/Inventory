@@ -93,9 +93,36 @@
 
         // Parse subdomains
         const subdomains = subsRaw.split(',').map(s => s.trim()).filter(s => s.length > 0);
-        
+
         if (subdomains.length === 0) {
             throw new Error('Please provide at least one subdomain.');
+        }
+
+        // Check for existing valid certificates before invoking Certbot
+        log('Checking for existing certificates...');
+        try {
+            const existing = await window.setup.checkExistingCerts({ subdomains });
+            if (existing && existing.found) {
+                const expiryDate = new Date(existing.expiresAt).toLocaleDateString();
+                const msg = existing.needsRenewal
+                    ? `Existing certificate found but expires soon (${expiryDate}, ${existing.daysLeft} days left).\n\nReuse it anyway, or regenerate?`
+                    : `Valid certificate found (expires ${expiryDate}, ${existing.daysLeft} days left).\n\nReuse existing certificate?`;
+
+                if (confirm(msg)) {
+                    log(`Reusing existing certificate (expires ${expiryDate}).`);
+                    await saveAndStart({
+                        hostname: existing.hostname,
+                        idpHostname: existing.idpHostname,
+                        httpsKey: existing.key,
+                        httpsCert: existing.cert,
+                        duckdnsToken: token
+                    });
+                    return;
+                }
+                log('User chose to regenerate. Proceeding with Certbot...');
+            }
+        } catch (e) {
+            log('Could not check existing certs: ' + e.message);
         }
 
         log(`Starting Certificate Generation for: ${subdomains.join(', ')}...`);
@@ -118,12 +145,19 @@
                 log(result.details);
             }
 
+            const isRateLimit = (result.message || '').includes('Rate limited');
             log('');
-            log('Common solutions:');
-            log('  • Verify DuckDNS token at https://www.duckdns.org');
-            log('  • Ensure domains are registered to your account');
-            log('  • Check PowerShell window for Certbot errors');
-            log('  • Wait 5 minutes if domain was just created (DNS propagation)');
+            if (isRateLimit) {
+                log('Solutions:');
+                log('  • Use different DuckDNS subdomains (e.g. add -dev suffix)');
+                log('  • Wait for the rate limit to expire (shown above)');
+                log('  • Use the "Manual" tab to provide existing certificate files');
+            } else {
+                log('Common solutions:');
+                log('  • Verify DuckDNS token at https://www.duckdns.org');
+                log('  • Check PowerShell window for Certbot errors');
+                log('  • Wait 5 minutes if domain was just created (DNS propagation)');
+            }
             log('─────────────────────────────');
 
             throw new Error('Certificate generation failed. See details above.');
@@ -137,7 +171,8 @@
             hostname: result.result.hostname,
             idpHostname: result.result.idpHostname,
             httpsKey: result.result.key,
-            httpsCert: result.result.cert
+            httpsCert: result.result.cert,
+            duckdnsToken: token
         });
     }
 

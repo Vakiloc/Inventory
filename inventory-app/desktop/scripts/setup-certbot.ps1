@@ -1,27 +1,98 @@
 ﻿<#
 .SYNOPSIS
     Automates Let's Encrypt Certificate Setup (Split Domain Support).
-    Uses a local Python Virtual Environment and User Profile storage.
+    Stores Python venv and Certbot data under AppDataDir (Electron userData).
+    Falls back to %USERPROFILE% for backward compatibility.
 #>
 
 param(
     [string]$ResultFile,
     [string[]]$Subdomains,
     [string]$Token,
-    [string]$Email
+    [string]$Email,
+    [string]$AppDataDir,
+    [string]$WebAppPort
 )
 
 $ErrorActionPreference = "Stop"
-$ScriptDir = $PSScriptRoot
-$VenvDir = Join-Path $ScriptDir ".certbot-env"
 
-# User-profile directories for Certbot to avoid permission issues
-$CertbotBaseDir = Join-Path $env:USERPROFILE ".inventory-certbot"
+# Use AppDataDir if provided, fall back to USERPROFILE for backward compat
+$BaseDir = if ($AppDataDir -and $AppDataDir.Trim()) { $AppDataDir.Trim() } else { $env:USERPROFILE }
+$VenvDir = Join-Path $BaseDir ".certbot-env"
+$CertbotBaseDir = Join-Path $BaseDir ".inventory-certbot"
 $ConfigDir = Join-Path $CertbotBaseDir "config"
 $WorkDir = Join-Path $CertbotBaseDir "work"
 $LogsDir = Join-Path $CertbotBaseDir "logs"
 $CredDir = Join-Path $CertbotBaseDir "credentials"
 $CredFile = Join-Path $CredDir "duckdns.ini"
+
+# Legacy location for backward compatibility checks
+$LegacyCertbotBaseDir = Join-Path $env:USERPROFILE ".inventory-certbot"
+$LegacyConfigDir = Join-Path $LegacyCertbotBaseDir "config"
+
+function Test-ExistingCerts {
+    param([string[]]$Domains, [string]$CfgDir)
+
+    $mainDomain = $Domains[0]
+    $baseName = $mainDomain -replace '\.duckdns\.org$', ''
+    $liveRoot = Join-Path $CfgDir "live"
+
+    if (-not (Test-Path $liveRoot)) { return $null }
+
+    # Scan all dirs under live/: exact match, alt name, or -0001 suffixed variants
+    $candidates = Get-ChildItem -Path $liveRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq $mainDomain -or $_.Name -eq $baseName -or $_.Name.StartsWith($mainDomain) -or $_.Name.StartsWith($baseName) } |
+        Sort-Object { if ($_.Name -eq $mainDomain -or $_.Name -eq $baseName) { 0 } else { 1 } }
+
+    $liveDir = $null
+    foreach ($candidate in $candidates) {
+        $kp = Join-Path $candidate.FullName "privkey.pem"
+        $cp = Join-Path $candidate.FullName "fullchain.pem"
+        if ((Test-Path $kp) -and (Test-Path $cp)) {
+            $mainDomain = $candidate.Name
+            $liveDir = $candidate.FullName
+            break
+        }
+    }
+
+    if (-not $liveDir) { return $null }
+
+    $keyPath = Join-Path $liveDir "privkey.pem"
+    $certPath = Join-Path $liveDir "fullchain.pem"
+
+    # Read expiry from the certificate using .NET X509Certificate2
+    try {
+        # Resolve symlinks for actual file content
+        $certItem = Get-Item $certPath
+        $actualCertPath = $certPath
+        if ($certItem.LinkType -eq 'SymbolicLink' -and $certItem.Target) {
+            $actualCertPath = Join-Path (Split-Path $certPath) $certItem.Target[0]
+        }
+
+        $certPem = Get-Content -Raw $actualCertPath
+        # Extract the first PEM block (the leaf certificate)
+        if ($certPem -match '(?s)(-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)') {
+            $pemBlock = $Matches[1]
+            $base64 = ($pemBlock -replace '-----BEGIN CERTIFICATE-----', '' -replace '-----END CERTIFICATE-----', '').Trim()
+            $bytes = [Convert]::FromBase64String($base64)
+            $x509 = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2(,$bytes)
+            $expiry = $x509.NotAfter
+            $daysLeft = ($expiry - (Get-Date)).Days
+
+            return @{
+                Domain       = $mainDomain
+                KeyPath      = $keyPath
+                CertPath     = $certPath
+                ExpiresAt    = $expiry.ToString("o")
+                DaysLeft     = $daysLeft
+                NeedsRenewal = ($daysLeft -lt 30)
+            }
+        }
+    } catch {
+        Write-Host "Warning: Could not parse existing certificate: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+    return $null
+}
 
 function Write-Result {
     param(
@@ -56,6 +127,41 @@ function Write-Result {
     $json = $outputData | ConvertTo-Json -Depth 5
     $utf8NoBom = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($ResultFile, $json, $utf8NoBom)
+}
+
+function Update-DuckDnsDomains {
+    param(
+        [string[]]$Domains,
+        [string]$DuckToken
+    )
+
+    # Detect local IPv4 where the webapp and idp are running.
+    $localIp = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias "Ethernet","Wi-Fi" -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -ne "127.0.0.1" }).IPAddress[0]
+    if (-not $localIp) {
+        throw "Could not detect local IPv4 address. Ensure you are connected to a network and have the necessary permissions."
+    } elseif (Test-NetConnection -ComputerName $localIp -Port $WebAppPort -InformationLevel Quiet) {
+        Write-Host "Local IP detected: $localIp and port $WebAppPort is open." -ForegroundColor Green
+    } else {
+        Write-Host "Warning: Local IP detected as $localIp but port $WebAppPort is not open. DuckDNS registration may succeed but certificate validation will fail." -ForegroundColor Yellow
+    }
+
+    # Strip .duckdns.org suffix to get bare subdomain names, join with comma
+    $subNames = ($Domains | ForEach-Object { $_ -replace '\.duckdns\.org$', '' }) -join ','
+
+    Write-Host "Registering/updating DuckDNS: $subNames -> $localIp" -ForegroundColor Yellow
+
+    # Single API call creates or updates all subdomains
+    $uri = "https://www.duckdns.org/update?domains=$subNames&token=$DuckToken&ip=$localIp"
+    try {
+        $response = Invoke-RestMethod -Uri $uri -Method Get -TimeoutSec 30
+    } catch {
+        throw "DuckDNS API request failed: $($_.Exception.Message)"
+    }
+
+    if ("$response".Trim() -ne 'OK') {
+        throw "DuckDNS registration failed (response: '$response'). Verify your token and that subdomains are available."
+    }
+    Write-Host "DuckDNS domains registered/updated successfully." -ForegroundColor Green
 }
 
 try {
@@ -94,6 +200,41 @@ try {
     }
 
     Write-Host "Targets: $($targets -join ', ')"
+
+    # --- Register/update DuckDNS domains with local IP ---
+    # Ensures domains exist before Certbot attempts DNS-01 challenge.
+    # Idempotent: if domains already exist, harmlessly updates their A record.
+    Update-DuckDnsDomains -Domains $targets -DuckToken $Token
+
+    # --- Check for existing valid certificates ---
+    # Check new location first, then legacy location
+    $existing = Test-ExistingCerts -Domains $targets -CfgDir $ConfigDir
+    if (-not $existing -and $LegacyConfigDir -ne $ConfigDir) {
+        $existing = Test-ExistingCerts -Domains $targets -CfgDir $LegacyConfigDir
+    }
+
+    if ($existing -and -not $existing.NeedsRenewal) {
+        Write-Host "Valid certificate found (expires in $($existing.DaysLeft) days)." -ForegroundColor Green
+        Write-Host "  Key:  $($existing.KeyPath)" -ForegroundColor Gray
+        Write-Host "  Cert: $($existing.CertPath)" -ForegroundColor Gray
+        Write-Host "Reusing existing certificate. Skipping Certbot." -ForegroundColor Green
+
+        $resultData = @{
+            hostname = $existing.Domain
+            key      = $existing.KeyPath
+            cert     = $existing.CertPath
+            reused   = $true
+        }
+        if ($targets.Count -gt 1) {
+            $resultData["idpHostname"] = $targets[1]
+        }
+        Write-Result -Success $true -Data $resultData
+        exit 0
+    }
+
+    if ($existing -and $existing.NeedsRenewal) {
+        Write-Host "Certificate expires in $($existing.DaysLeft) days. Will attempt renewal." -ForegroundColor Yellow
+    }
 
     # --- Python Venv Setup ---
     if (-not (Test-Path $VenvDir)) {
@@ -170,8 +311,15 @@ try {
         if ($cmdOutput -match "Request response text: KO") {
              Write-Host "DuckDNS Error Detected!" -ForegroundColor Red
         }
-        
-        Write-Result -Success $false -Message "Certbot failed with exit code $LASTEXITCODE" -Output $cmdOutput
+
+        # Parse rate limit message for a friendlier error
+        $errMsg = "Certbot failed with exit code $LASTEXITCODE"
+        if ($cmdOutput -match "too many certificates.*?retry after\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+UTC)") {
+            $retryAfter = $Matches[1]
+            $errMsg = "Rate limited by Let's Encrypt. Retry after $retryAfter. Use different subdomains or wait."
+        }
+
+        Write-Result -Success $false -Message $errMsg -Output $cmdOutput
         exit 1
     } else {
         Write-Host $cmdOutput -ForegroundColor Gray

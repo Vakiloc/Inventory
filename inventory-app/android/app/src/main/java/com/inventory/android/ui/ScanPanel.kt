@@ -47,8 +47,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -186,8 +192,13 @@ private fun InlineScannerPreview(
 
   val shape = MaterialTheme.shapes.medium
 
+  val scannerDesc = if (enabled) I18n.t(context, "accessibility.scannerActive") else I18n.t(context, "scan.scannerDisabled")
   Box(
     modifier = modifier
+      .semantics {
+        contentDescription = scannerDesc
+        liveRegion = LiveRegionMode.Polite
+      }
       .border(width = 3.dp, color = frameColor, shape = shape)
       .background(MaterialTheme.colorScheme.surface, shape)
   ) {
@@ -510,7 +521,11 @@ fun ScanPanel(repo: InventoryRepository, bootstrapped: MutableState<Boolean>, is
           }
           val bg = animateColorAsState(target, label = "scanStatusBg").value
 
-          Surface(color = bg, shape = MaterialTheme.shapes.small) {
+          Surface(
+            color = bg,
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+          ) {
             Row(
               modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
               verticalAlignment = Alignment.CenterVertically
@@ -824,12 +839,18 @@ private fun ItemFormDialog(
     return quantity.value.trim().toIntOrNull()?.coerceAtLeast(0) ?: 1
   }
 
+  val nameFieldFocus = remember { FocusRequester() }
+
+  LaunchedEffect(Unit) {
+    nameFieldFocus.requestFocus()
+  }
+
   AlertDialog(
     onDismissRequest = onDismiss,
     title = { Text(title) },
     text = {
       Column {
-        OutlinedTextField(value = name.value, onValueChange = { name.value = it }, label = { Text(t("item.field.name")) }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = name.value, onValueChange = { name.value = it }, label = { Text(t("item.field.name")) }, modifier = Modifier.fillMaxWidth().focusRequester(nameFieldFocus))
         Spacer(Modifier.padding(4.dp))
         OutlinedTextField(value = description.value, onValueChange = { description.value = it }, label = { Text(t("item.field.description")) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         Spacer(Modifier.padding(4.dp))

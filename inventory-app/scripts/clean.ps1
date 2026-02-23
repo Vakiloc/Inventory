@@ -75,4 +75,9 @@ Remove-PathSafe "$root\*.log"
 Remove-PathSafe "$root\server\*.log"
 Remove-PathSafe "$root\desktop\*.log"
 
+# 6. Claude temporary files. These tmpclaude-*-cwd files are a bug in the current version of Claude.
+Get-ChildItem -Path $root -Recurse -File -Filter "tmpclaude-*-cwd" | ForEach-Object {
+    Remove-PathSafe $_.FullName
+}
+
 Write-Host "Clean complete! You will need to run 'npm install' to rebuild dependencies." -ForegroundColor Magenta

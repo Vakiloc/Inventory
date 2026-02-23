@@ -107,32 +107,22 @@ export function createItemsController({
       if (!canEdit()) return;
       const id = item?.item_id;
       if (!id) return;
-      const current = Number(item.quantity ?? 0);
-      const next = Math.max(0, current + Number(delta ?? 0));
       const code = String(item?.barcode || '').trim();
+      const eventId = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
       try {
-        // If the item has a barcode, represent +/- as scan events so shared barcodes remain
-        // deterministic across devices (server applies using item_id).
-        if (code && (item?.barcode_corrupted ?? 0) !== 1) {
-          const eventId = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`);
-          await api.fetchJson('/api/scans/apply', {
-            method: 'POST',
-            body: JSON.stringify({
-              events: [{
-                event_id: eventId,
-                barcode: code,
-                delta: Number(delta ?? 0),
-                scanned_at: Date.now(),
-                item_id: Number(id)
-              }]
-            })
-          });
-        } else {
-          await api.fetchJson(`/api/items/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ quantity: next, last_modified: Date.now() })
-          });
-        }
+        // Always use scan events for quantity changes to maintain idempotency
+        // and consistent behavior across devices.
+        const ev = {
+          event_id: eventId,
+          barcode: code || `__item_${id}`,
+          delta: Number(delta ?? 0),
+          scanned_at: Date.now(),
+          item_id: Number(id)
+        };
+        await api.fetchJson('/api/scans', {
+          method: 'POST',
+          body: JSON.stringify({ events: [ev] })
+        });
         await refreshItems();
         setStatus(t('status.quantityUpdated', { name: item.name }));
       } catch (e) {
@@ -146,16 +136,39 @@ export function createItemsController({
       td.colSpan = 8;
       td.className = 'empty';
 
+      const wrap = document.createElement('div');
+      wrap.className = 'empty-state';
+
+      const icon = document.createElement('div');
+      icon.className = 'empty-state-icon';
+      icon.setAttribute('aria-hidden', 'true');
+
+      const heading = document.createElement('div');
+      heading.className = 'empty-state-heading';
+
+      const desc = document.createElement('div');
+      desc.className = 'empty-state-desc';
+
       if (items.length === 0) {
-        td.textContent = canEdit()
+        icon.textContent = '\uD83D\uDCE6';
+        heading.textContent = t('items.empty.heading.noItems');
+        desc.textContent = canEdit()
           ? t('items.empty.noItemsYetCanEdit')
           : t('items.empty.noItemsYetReadOnly');
       } else if (q || catId || locId) {
-        td.textContent = t('items.empty.noMatch');
+        icon.textContent = '\uD83D\uDD0D';
+        heading.textContent = t('items.empty.heading.noMatch');
+        desc.textContent = t('items.empty.noMatch');
       } else {
-        td.textContent = t('items.empty.noItemsToDisplay');
+        icon.textContent = '\uD83D\uDCE6';
+        heading.textContent = t('items.empty.heading.noItems');
+        desc.textContent = t('items.empty.noItemsToDisplay');
       }
 
+      wrap.appendChild(icon);
+      wrap.appendChild(heading);
+      wrap.appendChild(desc);
+      td.appendChild(wrap);
       tr.appendChild(td);
       itemsTbody.appendChild(tr);
     }
@@ -167,6 +180,8 @@ export function createItemsController({
       if ((it.barcode_corrupted ?? 0) === 1) {
         tdWarn.textContent = '⚠';
         tdWarn.title = t('item.field.barcode.corrupted');
+        tdWarn.setAttribute('role', 'img');
+        tdWarn.setAttribute('aria-label', t('accessibility.corruptedBarcode'));
       } else {
         tdWarn.textContent = '';
       }
@@ -184,6 +199,7 @@ export function createItemsController({
       minusBtn.className = 'btn';
       minusBtn.textContent = '-';
       minusBtn.disabled = !canEdit();
+      minusBtn.setAttribute('aria-label', t('accessibility.decrementQty', { name: it.name }));
       minusBtn.addEventListener('click', (e) => {
         e.preventDefault();
         applyQtyDelta(it, -1);
@@ -196,6 +212,7 @@ export function createItemsController({
       plusBtn.className = 'btn';
       plusBtn.textContent = '+';
       plusBtn.disabled = !canEdit();
+      plusBtn.setAttribute('aria-label', t('accessibility.incrementQty', { name: it.name }));
       plusBtn.addEventListener('click', (e) => {
         e.preventDefault();
         applyQtyDelta(it, +1);
@@ -223,6 +240,7 @@ export function createItemsController({
       editBtn.className = 'btn';
       editBtn.textContent = t('common.edit');
       editBtn.disabled = !canEdit();
+      editBtn.setAttribute('aria-label', t('accessibility.editItem', { name: it.name }));
       editBtn.addEventListener('click', () => openItemDialog(it));
       tdActions.appendChild(editBtn);
 
@@ -231,6 +249,7 @@ export function createItemsController({
       delBtn.textContent = t('common.delete');
       delBtn.style.marginLeft = '8px';
       delBtn.disabled = !canEdit();
+      delBtn.setAttribute('aria-label', t('accessibility.deleteItem', { name: it.name }));
       delBtn.addEventListener('click', async () => {
         if (!canEdit()) return;
         const ok = window.confirm(t('confirm.deleteItem', { name: it.name }));
@@ -282,7 +301,45 @@ export function createItemsController({
       const res = await api.fetchJson(`/api/items/${itemId}/barcodes`);
       const codes = Array.isArray(res.barcodes) ? res.barcodes.map(b => b.barcode).filter(Boolean) : [];
       section.style.display = 'block';
-      box.textContent = codes.length ? codes.join('\n') : t('item.altBarcodes.none');
+
+      if (codes.length === 0) {
+        box.textContent = t('item.altBarcodes.none');
+        return;
+      }
+
+      for (const code of codes) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.gap = '6px';
+        row.style.marginBottom = '4px';
+
+        const label = document.createElement('span');
+        label.textContent = code;
+        label.style.flex = '1';
+        row.appendChild(label);
+
+        if (canEdit()) {
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'btn danger';
+          removeBtn.style.padding = '2px 8px';
+          removeBtn.style.fontSize = '11px';
+          removeBtn.textContent = t('item.altBarcodes.remove');
+          removeBtn.addEventListener('click', async () => {
+            try {
+              await api.fetchJson(`/api/items/${itemId}/barcodes/${encodeURIComponent(code)}`, { method: 'DELETE' });
+              await refreshAltBarcodes(itemId);
+              setStatus(t('status.barcodeRemoved'));
+            } catch (e) {
+              setStatus(t('status.barcodeRemoveError', { error: e.message }));
+            }
+          });
+          row.appendChild(removeBtn);
+        }
+
+        box.appendChild(row);
+      }
     } catch {
       section.style.display = 'block';
       box.textContent = t('item.altBarcodes.errorLoading');
@@ -353,14 +410,103 @@ export function createItemsController({
       });
       el('altBarcodeInput').value = '';
       await refreshAltBarcodes(Number(itemId));
-      setStatus('Barcode added');
+      setStatus(t('status.barcodeAdded'));
     } catch (e) {
       if (e.status === 409 && e.body?.item_id) {
-        setStatus(`Barcode already used by item #${e.body.item_id}`);
+        setStatus(t('status.barcodeInUse', { id: e.body.item_id }));
       } else {
-        setStatus(`Add barcode error: ${e.message}`);
+        setStatus(t('status.addBarcodeError', { error: e.message }));
       }
     }
+  }
+
+  function buildPayloadFromForm() {
+    const rawBarcode = String(el('barcode').value || '').trim();
+    const corrupted = Boolean(el('barcodeCorrupted')?.checked);
+    return {
+      name: el('name').value.trim(),
+      description: el('description').value || null,
+      quantity: Number(el('quantity').value || 0),
+      value: el('value').value === '' ? null : Number(el('value').value),
+      category_id: el('categoryId').value ? Number(el('categoryId').value) : null,
+      location_id: el('locationId').value ? Number(el('locationId').value) : null,
+      barcode: corrupted ? null : (rawBarcode || null),
+      barcode_corrupted: corrupted ? 1 : 0,
+      serial_number: el('serial').value || null,
+      purchase_date: el('purchase').value || null,
+      warranty_info: el('warranty').value || null,
+      photo_path: el('photo').value || null
+    };
+  }
+
+  function formatConflictSide(data) {
+    const fields = [
+      ['name', data.name],
+      ['quantity', data.quantity],
+      ['barcode', data.barcode || ''],
+      ['category_id', data.category_id ?? ''],
+      ['location_id', data.location_id ?? ''],
+      ['value', data.value ?? ''],
+      ['serial_number', data.serial_number || ''],
+      ['last_modified', data.last_modified ? new Date(data.last_modified).toLocaleString() : '']
+    ];
+    return fields.map(([k, v]) => `${k}: ${v}`).join('\n');
+  }
+
+  function showConflictDialog(localPayload, serverItem) {
+    const dlg = el('conflictDialog');
+    if (!dlg) return;
+
+    el('conflictLocal').textContent = formatConflictSide(localPayload);
+    el('conflictServer').textContent = formatConflictSide(serverItem);
+
+    const itemId = serverItem.item_id;
+
+    const keepMineBtn = el('conflictKeepMine');
+    const keepServerBtn = el('conflictKeepServer');
+
+    // Remove old listeners by cloning
+    const newKeepMine = keepMineBtn.cloneNode(true);
+    keepMineBtn.parentNode.replaceChild(newKeepMine, keepMineBtn);
+    const newKeepServer = keepServerBtn.cloneNode(true);
+    keepServerBtn.parentNode.replaceChild(newKeepServer, keepServerBtn);
+
+    newKeepMine.addEventListener('click', async () => {
+      const forced = { ...localPayload, last_modified: Date.now() };
+      try {
+        await api.fetchJson(`/api/items/${itemId}`, { method: 'PUT', body: JSON.stringify(forced) });
+        dlg.close();
+        el('itemDialog').close();
+        await refreshItems();
+        setStatus(t('conflict.resolved.keepMine'));
+      } catch (e) {
+        setStatus(t('conflict.resolved.error', { error: e.message }));
+      }
+    });
+
+    newKeepServer.addEventListener('click', async () => {
+      writeItemFormState({
+        item_id: serverItem.item_id,
+        name: serverItem.name ?? '',
+        description: serverItem.description ?? '',
+        quantity: serverItem.quantity ?? 1,
+        value: serverItem.value ?? '',
+        category_id: serverItem.category_id ?? '',
+        location_id: serverItem.location_id ?? '',
+        barcode: serverItem.barcode ?? '',
+        barcode_corrupted: serverItem.barcode_corrupted ?? 0,
+        serial_number: serverItem.serial_number ?? '',
+        purchase_date: serverItem.purchase_date ?? '',
+        warranty_info: serverItem.warranty_info ?? '',
+        photo_path: serverItem.photo_path ?? ''
+      });
+      itemDialogSnapshot = readItemFormState();
+      dlg.close();
+      await refreshItems();
+      setStatus(t('conflict.resolved.keepServer'));
+    });
+
+    dlg.showModal();
   }
 
   async function saveItem() {
@@ -368,7 +514,7 @@ export function createItemsController({
 
     const trimmedName = el('name').value.trim();
     if (!trimmedName) {
-      setStatus('Name is required');
+      setStatus(t('validation.nameRequired'));
       try {
         el('name')?.focus();
       } catch {
@@ -377,32 +523,23 @@ export function createItemsController({
       return;
     }
 
-    const rawBarcode = String(el('barcode').value || '').trim();
-    const corrupted = Boolean(el('barcodeCorrupted')?.checked);
-    const normalizedBarcode = rawBarcode ? rawBarcode : null;
+    const payload = buildPayloadFromForm();
 
-    const payload = {
-      name: trimmedName,
-      description: el('description').value || null,
-      quantity: Number(el('quantity').value || 0),
-      value: el('value').value === '' ? null : Number(el('value').value),
-      category_id: el('categoryId').value ? Number(el('categoryId').value) : null,
-      location_id: el('locationId').value ? Number(el('locationId').value) : null,
-      barcode: corrupted ? null : normalizedBarcode,
-      barcode_corrupted: corrupted ? 1 : 0,
-      serial_number: el('serial').value || null,
-      purchase_date: el('purchase').value || null,
-      warranty_info: el('warranty').value || null,
-      photo_path: el('photo').value || null
-    };
-
-    if (id) {
-      await api.fetchJson(`/api/items/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    } else {
-      await api.fetchJson('/api/items', { method: 'POST', body: JSON.stringify(payload) });
+    try {
+      if (id) {
+        payload.last_modified = Date.now();
+        await api.fetchJson(`/api/items/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      } else {
+        await api.fetchJson('/api/items', { method: 'POST', body: JSON.stringify(payload) });
+      }
+      await refreshItems();
+    } catch (e) {
+      if (e.status === 409 && e.body?.error === 'conflict' && e.body?.serverItem) {
+        showConflictDialog(payload, e.body.serverItem);
+        return;
+      }
+      throw e;
     }
-
-    await refreshItems();
   }
 
   async function deleteItem() {

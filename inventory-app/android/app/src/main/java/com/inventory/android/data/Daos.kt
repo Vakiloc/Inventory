@@ -106,6 +106,9 @@ interface ItemsDao {
   @Query("UPDATE items SET location_id = :newId WHERE location_id = :oldId")
   suspend fun remapLocationId(oldId: Int, newId: Int)
 
+  @Query("UPDATE items SET deleted = 1, last_modified = :lm WHERE item_id = :id")
+  suspend fun softDelete(id: Int, lm: Long)
+
   @Query("DELETE FROM items WHERE item_id = :id")
   suspend fun deleteById(id: Int)
 }
@@ -235,11 +238,25 @@ interface PendingItemUpdateDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun upsert(row: PendingItemUpdateEntity)
 
-  @Query("SELECT * FROM pending_item_updates WHERE state IN ('pending','blocked','error') ORDER BY created_at ASC LIMIT :limit")
-  suspend fun listPending(limit: Int): List<PendingItemUpdateEntity>
+  @Query("""
+    SELECT * FROM pending_item_updates
+    WHERE state IN ('pending','blocked','error')
+      AND (last_attempt_at IS NULL OR last_attempt_at < :retryAfter)
+    ORDER BY created_at ASC LIMIT :limit
+  """)
+  suspend fun listPending(limit: Int, retryAfter: Long = 0): List<PendingItemUpdateEntity>
 
   @Query("SELECT COUNT(*) FROM pending_item_updates WHERE state IN ('pending','blocked','error')")
   suspend fun countPending(): Int
+
+  @Query("SELECT COUNT(*) FROM pending_item_updates WHERE state = 'conflict'")
+  suspend fun countConflicts(): Int
+
+  @Query("SELECT * FROM pending_item_updates WHERE state = 'conflict' ORDER BY created_at ASC")
+  suspend fun listConflicts(): List<PendingItemUpdateEntity>
+
+  @Query("DELETE FROM pending_item_updates WHERE client_id = :clientId")
+  suspend fun deleteById(clientId: String)
 
   @Query("UPDATE pending_item_updates SET state = :state, last_attempt_at = :attempt WHERE client_id = :clientId")
   suspend fun setState(clientId: String, state: String, attempt: Long)
