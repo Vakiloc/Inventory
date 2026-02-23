@@ -29,17 +29,21 @@ Configuration file: [.github/dependabot.yml](../../.github/dependabot.yml)
 
 - **Directory**: `/inventory-app` (workspace root)
 - **Schedule**: Weekly (Mondays)
-- **Grouping**: All npm dependencies grouped into a single PR (`npm-dependencies` group)
+- **Grouping**: Split into 4 sub-groups for targeted merging:
+  - **server-deps**: Express, Zod, better-sqlite3, cors, SimpleWebAuthn, googleapis
+  - **build-tools**: Vite, Vitest, Electron, electron-builder, cross-env, wait-on, concurrently
+  - **capacitor**: All `@capacitor/*` and `@capacitor-mlkit/*` packages
+  - **testing**: Supertest, jsdom, Testing Library
 
-**Rationale**: Grouping reduces PR volume and allows testing all npm updates together for better compatibility validation.
+**Rationale**: Sub-grouping prevents a single failing major update from blocking all other updates. Each group can be reviewed and merged independently.
 
 ### Gradle (Android packages)
 
 - **Directory**: `/inventory-app/android`
 - **Schedule**: Weekly (Mondays)
-- **Grouping**: None (individual PRs per dependency)
+- **Grouping**: Split by ecosystem (androidx, square, kotlin, testing)
 
-**Rationale**: Android dependencies are more isolated. Individual PRs allow selective merging based on compatibility and migration requirements.
+**Rationale**: Grouped by ecosystem for selective merging based on compatibility and migration requirements.
 
 ## Merge Criteria
 
@@ -149,7 +153,10 @@ If Dependabot opens a PR that conflicts with existing `package.json` or `build.g
 | Dependency | Blocker | Resolution |
 |------------|---------|------------|
 | ~~`androidx.room:room-runtime` 2.8+~~ | ~~Requires Kotlin 2.0 migration~~ | Resolved — Kotlin 2.3.0 / AGP 9.0.1 / Room 2.8.4 migration completed |
-| `electron` (major bumps) | May require IPC API changes | Review release notes, test IPC thoroughly before merging |
+| ~~`electron` (major bumps)~~ | ~~May require IPC API changes~~ | Resolved — Electron 40 migrated; IPC/contextBridge unchanged |
+| ~~`express` 5.x~~ | ~~Path-to-regexp v8, req.body changes~~ | Resolved — Express 5.2.1; wrapRoute removed, routes use native async handling |
+| ~~`zod` 4.x~~ | ~~flatten/default/refine breaking changes~~ | Resolved — Zod 4.3.6; custom flattenZodError, string refine shorthand |
+| ~~`@capacitor/*` 8.x~~ | ~~Native project migration required~~ | Resolved — Capacitor 8.1.0; 5 unused plugins removed; `npx cap migrate` needed for native projects |
 
 ### Permanent Exceptions
 
@@ -230,4 +237,4 @@ This document is a living guide. Update it when:
 - Update patterns emerge (e.g., frequent failures in a package)
 - Tooling changes (e.g., new CI requirements)
 
-**Last updated**: 2026-02-22
+**Last updated**: 2026-02-23
