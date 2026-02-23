@@ -14,7 +14,7 @@ import android.content.Context
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.util.Locale
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import com.inventory.android.net.DiscoveryResolver
 import java.io.File
 import java.security.KeyStore
@@ -71,9 +71,9 @@ class ApiClient(
     val builder = OkHttpClient.Builder()
       .addInterceptor(auth)
       .addInterceptor(log)
-      .connectTimeout(15, TimeUnit.SECONDS)
-      .readTimeout(30, TimeUnit.SECONDS)
-      .writeTimeout(30, TimeUnit.SECONDS)
+      .connectTimeout(15.seconds)
+      .readTimeout(30.seconds)
+      .writeTimeout(30.seconds)
 
     if (dns != null) {
       builder.dns(dns)
