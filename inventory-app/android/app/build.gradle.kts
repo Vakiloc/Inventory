@@ -131,6 +131,6 @@ dependencies {
   androidTestImplementation("androidx.test:rules:1.7.0")
   androidTestImplementation("androidx.work:work-testing:2.11.1")
 
-  androidTestImplementation("org.mockito:mockito-android:5.21.0")
-  androidTestImplementation("org.mockito.kotlin:mockito-kotlin:6.2.3")
+  androidTestImplementation("org.mockito:mockito-android:5.23.0")
+  androidTestImplementation("org.mockito.kotlin:mockito-kotlin:6.3.0")
 }
